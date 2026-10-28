@@ -51,10 +51,9 @@ aifhub:
     requireSpecCoverageForDone: true
     allowWarnOnDone:
       rules: false
-      # The coverage matrix only sees standalone test files; this repo keeps its unit tests in
-      # #[cfg(test)] modules inside the source files, so coverage stays "partial" even when every
-      # requirement is tested (see .ai-factory/qa/trash-vault-domain-extraction/verify.md).
-      coverage: true
+      # Housekeeping rules are tested from apps/gallery/tests/housekeeping.rs, which the coverage
+      # matrix recognises as test evidence, so a partial requirement is a real gap again.
+      coverage: false
       openspecStatus: true
 paths:
   description: .ai-factory/DESCRIPTION.md
