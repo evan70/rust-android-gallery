@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+# One run per branch/PR; a new push cancels the previous one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Windows on purpose: the desktop `eframe` dependency is declared without the `x11`/`wayland`
+    # features, so `winit` refuses to compile on a Linux runner. Windows and macOS build it without
+    # extra features, and the tests are platform-neutral (temp dirs, no device access).
+    name: cargo test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run the test suite
+        run: cargo test --workspace
