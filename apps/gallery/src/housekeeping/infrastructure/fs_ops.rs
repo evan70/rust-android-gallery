@@ -77,6 +77,9 @@ impl FileOps for FsOps {
 
 #[cfg(test)]
 mod tests {
+    //! Only the copy guard is tested here; the rest of the housekeeping contract lives in
+    //! `apps/gallery/tests/housekeeping.rs`.
+
     use super::*;
 
     fn temp(name: &str) -> PathBuf {
@@ -99,30 +102,5 @@ mod tests {
         assert!(!to.exists(), "the partial copy is removed again");
         assert_eq!(fs::read(&from).unwrap(), b"0123456789", "the source is untouched");
         let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn moves_create_dirs_and_write_markers() {
-        let dir = temp("moves");
-        let files = FsOps;
-        let src = dir.join("a.jpg");
-        fs::write(&src, b"pixels").unwrap();
-        files.create_dir_all(&dir.join("album")).unwrap();
-        files.move_file(&src, &dir.join("album/a.jpg")).unwrap();
-        assert!(!files.exists(&src) && files.exists(&dir.join("album/a.jpg")));
-
-        files.write_marker(&dir.join("album"), ".nomedia").unwrap();
-        assert!(files.exists(&dir.join("album/.nomedia")));
-
-        files.remove(&dir.join("album/a.jpg")).unwrap();
-        assert!(!files.exists(&dir.join("album/a.jpg")));
-        assert!(files.remove(&dir.join("album/a.jpg")).is_err(), "removing twice fails");
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn default_folders_are_dot_folders() {
-        assert!(FsOps::default_trash_dir().ends_with("gallery-trash") || FsOps::default_trash_dir().ends_with(".GalleryTrash"));
-        assert!(FsOps::default_hidden_dir().ends_with("gallery-hidden") || FsOps::default_hidden_dir().ends_with(".GalleryHidden"));
     }
 }

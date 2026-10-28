@@ -10,7 +10,7 @@ mod diag;
 mod exif;
 mod gridlayout;
 mod hidden;
-mod housekeeping;
+pub mod housekeeping;
 mod intents;
 mod settings;
 mod space;

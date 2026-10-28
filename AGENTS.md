@@ -45,6 +45,7 @@ apps/gallery/
     intents.rs                 "Open with" / content picker intents
     perm.rs                    Android runtime permissions (Android only)
     diag.rs                    rolling diagnostic log (`diag.log`)
+  tests/housekeeping.rs        integration tests for the trash and vault rules
   android/
     AndroidManifest.xml        package dev.heartnetapps.gallery, minSdk 30, targetSdk 34
     java/dev/heartnetapps/gallery/*.java   thin Java bridge (activity, biometric, share, player)
@@ -83,7 +84,7 @@ docs/                          INSTALL.md, SIGNING.md
 | .ai-factory/ARCHITECTURE.md | Target architecture: bounded contexts, flat slices, ports and dependency rules (current flat modules are legacy, migrated incrementally) |
 | .ai-factory/rules/base.md | Detected coding conventions (naming, modules, errors, logging) |
 | .ai-factory/config.yaml | AI Factory settings (UI language `sk`, artifacts English, git disabled, OpenSpec-native mode via `aifhub.tools.openspec: true`) |
-| openspec/specs/ | Canonical OpenSpec requirements: `photos`, `albums`, `trash` (project `android-rust-gallery` in `openspec/config.yaml`) |
+| openspec/specs/ | Canonical OpenSpec requirements: `photos`, `albums`, `trash`, `vault` (project `android-rust-gallery` in `openspec/config.yaml`) |
 | openspec/changes/ | OpenSpec change proposals — new plans are written here, not to `.ai-factory/plans/` |
 | .ai-factory/rules/generated/ | Rules compiled from the active OpenSpec change (`openspec-base.md`, `index.json`) |
 | .agents/skills/ | Installed skills, including `rust-skills` and `rust-engineer` |
@@ -94,7 +95,8 @@ docs/                          INSTALL.md, SIGNING.md
 - Run shell commands one at a time, not chained — a failure then points at the exact step.
   - Incorrect: `cd apps/gallery && cargo test && cargo build`
   - Correct: first `cd apps/gallery`, then `cargo test`, then `cargo build`
-- This checkout has no git repository, so do not plan branch, diff or push steps.
+- Git tracks a local history with an `origin` remote, but `git.enabled` stays `false`: do not plan
+  branch, diff or push steps in AI Factory workflows.
 - `cargo test` (from `apps/gallery` or the workspace root) is the verification command; the APK
   build needs Windows, the Android SDK/NDK and a signing key, so it is not part of normal checks.
 - Keep platform code behind `#[cfg(target_os = "android")]` with a desktop stub so tests keep

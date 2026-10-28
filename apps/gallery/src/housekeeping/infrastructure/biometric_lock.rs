@@ -86,16 +86,3 @@ impl VaultLock for BiometricLock {
         LockResult::Granted
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[cfg(not(target_os = "android"))]
-    #[test]
-    fn the_desktop_lock_never_blocks() {
-        let lock = BiometricLock;
-        assert!(lock.request("Hidden album"));
-        assert_eq!(lock.poll(), LockResult::Granted);
-    }
-}

@@ -54,17 +54,3 @@ pub trait VaultLock: Send + Sync {
     /// 0 = still waiting, 1 = granted, 3 = no screen lock configured, other = denied.
     fn poll(&self) -> LockResult;
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn lock_codes_map_to_the_four_outcomes() {
-        assert_eq!(LockResult::from_code(0), LockResult::Waiting);
-        assert_eq!(LockResult::from_code(1), LockResult::Granted);
-        assert_eq!(LockResult::from_code(3), LockResult::NoScreenLock);
-        assert_eq!(LockResult::from_code(2), LockResult::Denied);
-        assert_eq!(LockResult::from_code(-1), LockResult::Denied);
-    }
-}

@@ -39,7 +39,8 @@ the UI on a PC.
 - **Build:** `apps/gallery/build-apk.ps1` (PowerShell, Windows). `cargo ndk` for arm64-v8a, then
   `javac` / `d8` / `aapt2` / `zipalign` / `apksigner` from build-tools 34.0.0, minSdk 30,
   targetSdk 34
-- **Tests:** built-in Rust `#[cfg(test)]` unit tests (run with `cargo test`)
+- **Tests:** Rust `cargo test` — 27 in-module `#[cfg(test)]` unit tests plus the housekeeping
+  contract in `apps/gallery/tests/housekeeping.rs`
 
 ## Current Code Structure
 

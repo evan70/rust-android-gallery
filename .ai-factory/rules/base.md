@@ -25,6 +25,9 @@
   `housekeeping/domain/`, `thumbcache.rs`, `media.rs`, `diag.rs`.
 - UI features extend `Gallery` from their own module via `impl Gallery` blocks: `albumops.rs`,
   `settings.rs`, `space.rs`, `hidden.rs`, `intents.rs`, `viewer.rs`.
+- Integration tests live in `apps/gallery/tests/housekeeping.rs` (one binary, an inner module per
+  rule area). They reach the crate through `gallery::housekeeping::…`, so anything a test needs
+  there has to stay `pub`.
 - Platform-specific code is behind `#[cfg(target_os = "android")]` and must keep a desktop
   implementation (or stub) so `cargo test` and the `gallery-desktop` binary still build.
 - Java classes in `apps/gallery/android/java/dev/heartnetapps/gallery/` are a thin platform
