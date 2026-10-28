@@ -1,0 +1,148 @@
+# AI Factory Configuration v1
+# This file persists project-level settings for AI agents
+# Generated/updated by aif-analyze
+# Source of truth for paths, workflow settings, and rules references
+
+# ============================================================================
+# LANGUAGE SETTINGS
+# ============================================================================
+language:
+  # Language for agent communication (UI messages, questions, summaries)
+  ui: {{language_ui}}
+  # Language for generated artifacts (DESCRIPTION.md, ARCHITECTURE.md, plans, etc.)
+  artifacts: {{language_artifacts}}
+  # Language for technical terms (usually english for consistency)
+  technical_terms: keep # keep | translate | mixed
+
+# ============================================================================
+# AIFHUB OPTIONAL TOOLS
+# ============================================================================
+# AI Factory is always the workflow base. Additional tools are independent.
+# Enable OpenSpec only when requested or already enabled in the project.
+# Legacy aifhub.artifactProtocol is read only when aifhub.tools is absent.
+aifhub:
+  tools:
+    openspec: false
+    hlv: false
+    lekalo: false # reserved; upstream provider protocol is not yet supported
+  # Optional session read optimization. Preserve existing values and never
+  # enable automatically; mode is off | aifhub | sqz.
+  contextDedup:
+    mode: "off"
+    minBytes: 2048
+    maxEntries: 500
+    protectedPatterns: []
+    sqz:
+      command: sqz
+# OpenSpec-native mode writes its own aifhub settings profile only when
+# aifhub.tools.openspec is true.
+
+# ============================================================================
+# PATH CONFIGURATION
+# ============================================================================
+# All paths are relative to project root
+paths:
+  # Core AI Factory artifacts (owned by core /aif skills)
+  description: .ai-factory/DESCRIPTION.md
+  architecture: .ai-factory/ARCHITECTURE.md
+  # Optional project glossary; the file is created only with explicit opt-in
+  context: CONTEXT.md
+  roadmap: .ai-factory/ROADMAP.md
+  research: .ai-factory/RESEARCH.md
+  
+  # Workflow directories
+  plans: .ai-factory/plans
+  specs: .ai-factory/specs
+
+  # Upstream AI Factory optional path defaults remain available when omitted.
+  # Examples: paths.docs -> docs/, paths.qa -> .ai-factory/qa,
+  # paths.archive -> .ai-factory/archive.
+  # paths.architecture stays project-level AI Factory context; do not point it
+  # at canonical OpenSpec paths such as openspec/specs or openspec/changes.
+
+  # OpenSpec-native mode writes its own path profile only when selected.
+  
+  # Rules directory (base.md required, area files optional)
+  rules: .ai-factory/rules
+
+# ============================================================================
+# REVIEW CONFIGURATION
+# ============================================================================
+# Durable project review policy. /aif-analyze creates the file when missing;
+# review commands consume it read-only.
+reviews:
+  policy_file: REVIEW.md
+
+# ============================================================================
+# OPTIONAL UTILITIES
+# ============================================================================
+# Optional, user-owned tools that can provide extra context.
+utilities:
+  context_tools:
+    # User-accepted optional context tool ids from /aif-analyze recommendations.
+    # Follow-on skills call aifhub-memory-tools select and use only selected_tools.
+    enabled: []
+  graphify:
+    # Recommended for large or unfamiliar repositories.
+    # AIFHub never installs or runs Graphify automatically.
+    enabled: false
+    uv_check: uv --version
+    install: uv tool install graphifyy
+    activate: graphify install
+    report_command: graphify .
+  codegraph:
+    # Manual CLI-only repo graph preference for broad /aif-explore research.
+    # AIFHub never runs codegraph install, MCP serving, or agent config mutation.
+    enabled: false
+    command: codegraph
+    status: codegraph status
+    init: codegraph init .
+    index: codegraph index --quiet .
+    query: codegraph query --path . --limit 10 --json
+    purge: codegraph uninit --force .
+
+# ============================================================================
+# WORKFLOW SETTINGS
+# ============================================================================
+workflow:
+  # Auto-create missing directories when needed
+  auto_create_dirs: true
+  
+  # Plan ID generation format: slug | sequential | timestamp
+  plan_id_format: slug
+  
+  # Guided handoff triggers (suggest next skill after completion)
+  # If true, aif-analyze suggests running /aif-architecture when done
+  analyze_updates_architecture: true
+  # If true, aif-architecture suggests running /aif-roadmap when done
+  architecture_updates_roadmap: true
+  
+  # Verification mode: strict | normal | lenient
+  # strict: all rules are blocking, any violation fails verification
+  # normal: critical rules are blocking, others are warnings
+  # lenient: all rules are warnings only
+  verify_mode: normal
+
+# ============================================================================
+# RULES CONFIGURATION
+# ============================================================================
+# Rules are loaded by aif-implement and aif-verify as quality gates
+# base.md is required; area files are optional and plan-driven
+rules:
+  # Required: project-wide coding rules, conventions, constraints
+  base: .ai-factory/rules/base.md
+  
+  # Optional area-specific rules (added during planning when a plan needs them)
+  # Uncomment and add paths as needed:
+  # api: .ai-factory/rules/api.md
+  # frontend: .ai-factory/rules/frontend.md
+  # backend: .ai-factory/rules/backend.md
+  # database: .ai-factory/rules/database.md
+  # logging: .ai-factory/rules/logging.md
+  # testing: .ai-factory/rules/testing.md
+
+# ============================================================================
+# AGENT PROFILE (optional)
+# ============================================================================
+# Predefined behavior profiles: default | strict | creative | minimal
+agent_profile: default

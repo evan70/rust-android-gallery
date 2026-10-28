@@ -1,0 +1,1050 @@
+// openspec-verification-context.test.mjs - tests for OpenSpec verify runtime context
+import { afterEach, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
+import {
+  buildVerificationContext,
+  readLatestVerificationEvidence,
+  runOpenSpecVerification,
+  summarizeOpenSpecValidation,
+  validateAifHubArtifactContract,
+  writeVerificationEvidence
+} from './openspec-verification-context.mjs';
+import {
+  createGateResult,
+  renderGateResultBlock,
+  getLatestGateResult
+} from './aif-gate-result.mjs';
+
+const tempRoots = [];
+
+async function createTempRoot() {
+  const rootDir = await mkdtemp(path.join(os.tmpdir(), 'aifhub-openspec-verify-'));
+  tempRoots.push(rootDir);
+  return rootDir;
+}
+
+async function writeFixture(rootDir, relativePath, content) {
+  const targetPath = path.join(rootDir, ...relativePath.split('/'));
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  await writeFile(targetPath, content, 'utf8');
+  return targetPath;
+}
+
+async function createOpenSpecChange(rootDir, changeId = 'add-oauth') {
+  await writeFixture(rootDir, `openspec/changes/${changeId}/proposal.md`, '# Proposal\n');
+  await writeFixture(rootDir, `openspec/changes/${changeId}/design.md`, '# Design\n');
+  await writeFixture(rootDir, `openspec/changes/${changeId}/tasks.md`, '# Tasks\n\n- [ ] Implement\n');
+  await writeFixture(rootDir, `openspec/changes/${changeId}/specs/auth/spec.md`, '# Auth Delta\n');
+  await writeFixture(rootDir, 'openspec/specs/auth/spec.md', '# Auth Base\n');
+}
+
+async function createGeneratedRules(rootDir, changeId = 'add-oauth') {
+  await writeFixture(rootDir, '.ai-factory/rules/generated/openspec-base.md', '# Base Rules\n');
+  await writeFixture(rootDir, `.ai-factory/rules/generated/openspec-change-${changeId}.md`, '# Change Rules\n');
+  await writeFixture(rootDir, `.ai-factory/rules/generated/openspec-merged-${changeId}.md`, '# Merged Rules\n');
+}
+
+async function pathExists(targetPath) {
+  try {
+    await access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readJson(targetPath) {
+  return JSON.parse(await readFile(targetPath, 'utf8'));
+}
+
+function availableCliDetection() {
+  return {
+    available: true,
+    canValidate: true,
+    canArchive: true,
+    version: '1.3.1',
+    command: 'openspec',
+    reason: null,
+    errors: []
+  };
+}
+
+function missingCliDetection() {
+  return {
+    available: false,
+    canValidate: false,
+    canArchive: false,
+    version: null,
+    command: 'openspec',
+    reason: 'missing-cli',
+    errors: [
+      {
+        code: 'missing-cli',
+        message: 'OpenSpec CLI is not available on PATH.'
+      }
+    ]
+  };
+}
+
+function validationResult(overrides = {}) {
+  return {
+    ok: overrides.ok ?? true,
+    command: 'openspec',
+    args: [
+      'validate',
+      'add-oauth',
+      '--type',
+      'change',
+      '--strict',
+      '--json',
+      '--no-interactive',
+      '--no-color'
+    ],
+    exitCode: overrides.exitCode ?? 0,
+    stdout: overrides.stdout ?? '{"valid":true}',
+    stderr: overrides.stderr ?? '',
+    json: Object.hasOwn(overrides, 'json') ? overrides.json : { valid: true },
+    jsonParseError: Object.hasOwn(overrides, 'jsonParseError') ? overrides.jsonParseError : null,
+    error: Object.hasOwn(overrides, 'error') ? overrides.error : null
+  };
+}
+
+function statusResult(overrides = {}) {
+  return {
+    ok: overrides.ok ?? true,
+    command: 'openspec',
+    args: ['status', '--change', 'add-oauth', '--json', '--no-color'],
+    exitCode: overrides.exitCode ?? 0,
+    stdout: overrides.stdout ?? '{"change":"add-oauth"}',
+    stderr: overrides.stderr ?? '',
+    json: Object.hasOwn(overrides, 'json') ? overrides.json : { change: 'add-oauth' },
+    jsonParseError: Object.hasOwn(overrides, 'jsonParseError') ? overrides.jsonParseError : null,
+    error: Object.hasOwn(overrides, 'error') ? overrides.error : null
+  };
+}
+
+afterEach(async () => {
+  await Promise.all(tempRoots.splice(0).map((rootDir) => rm(rootDir, {
+    recursive: true,
+    force: true
+  })));
+});
+
+describe('OpenSpec verification context API', () => {
+  it('exports the required public functions', () => {
+    for (const fn of [
+      buildVerificationContext,
+      runOpenSpecVerification,
+      writeVerificationEvidence,
+      readLatestVerificationEvidence,
+      summarizeOpenSpecValidation,
+      validateAifHubArtifactContract
+    ]) {
+      assert.equal(typeof fn, 'function', 'verification context public API should export functions');
+    }
+  });
+
+  it('builds a passing verification context and writes QA evidence', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await createGeneratedRules(rootDir);
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult(),
+      getOpenSpecStatus: async () => statusResult()
+    });
+
+    assert.equal(result.ok, true, 'valid OpenSpec validation should pass verification context');
+    assert.equal(result.mode, 'openspec-native');
+    assert.equal(result.changeId, 'add-oauth');
+    assert.equal(result.shouldRunCodeVerification, true, 'valid validation should allow code verification');
+    assert.equal(result.openspec.validation.ok, true);
+    assert.equal(result.openspec.status.ok, true);
+    assert.deepEqual(result.canonicalArtifacts.baseSpecs.map((item) => item.path), [
+      'openspec/specs/auth/spec.md'
+    ]);
+    assert.deepEqual(result.canonicalArtifacts.deltaSpecs.map((item) => item.path), [
+      'openspec/changes/add-oauth/specs/auth/spec.md'
+    ]);
+    assert.deepEqual(result.generatedRules.map((item) => item.path), [
+      '.ai-factory/rules/generated/openspec-merged-add-oauth.md',
+      '.ai-factory/rules/generated/openspec-change-add-oauth.md',
+      '.ai-factory/rules/generated/openspec-base.md'
+    ]);
+    assert.ok(
+      result.qaEvidence.files.includes('.ai-factory/qa/add-oauth/openspec-validation.json'),
+      'verification context should record validation evidence under QA path'
+    );
+
+    const validationEvidencePath = path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'openspec-validation.json');
+    const statusEvidencePath = path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'openspec-status.json');
+    const coveragePath = path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'coverage.json');
+    const verifyPath = path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'verify.md');
+
+    assert.equal(await pathExists(validationEvidencePath), true, 'validation evidence JSON should be written');
+    assert.equal(await pathExists(statusEvidencePath), true, 'status evidence JSON should be written');
+    assert.equal(await pathExists(coveragePath), true, 'coverage matrix JSON should be written');
+    assert.equal(await pathExists(verifyPath), true, 'verify.md summary should be written');
+    assert.equal(await pathExists(path.join(rootDir, 'openspec', 'changes', 'add-oauth', 'verify.md')), false);
+    assert.equal(await pathExists(path.join(rootDir, '.ai-factory', 'plans', 'add-oauth')), false);
+
+    const validationEvidence = await readJson(validationEvidencePath);
+    assert.equal(validationEvidence.changeId, 'add-oauth');
+    assert.deepEqual(validationEvidence.parsedJson, { valid: true });
+    assert.equal(validationEvidence.rawStdoutPath, '.ai-factory/qa/add-oauth/raw/openspec-validate.stdout');
+    assert.equal(validationEvidence.rawStderrPath, '.ai-factory/qa/add-oauth/raw/openspec-validate.stderr');
+    const coverage = await readJson(coveragePath);
+    assert.equal(coverage.schema_version, 1);
+    assert.equal(coverage.change_id, 'add-oauth');
+    const verifySummary = await readFile(verifyPath, 'utf8');
+    assert.match(verifySummary, /Code verification: PENDING/);
+    assert.match(verifySummary, /## Coverage/);
+  });
+
+  it('preserves bounded project-local command diagnostics in runtime and QA evidence', async () => {
+    const rootDir = await createTempRoot();
+    const command = 'node_modules/.bin/openspec.cmd';
+    const commandSource = 'project-local';
+    await createOpenSpecChange(rootDir);
+    await createGeneratedRules(rootDir);
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => ({
+        ...availableCliDetection(),
+        command,
+        commandSource
+      }),
+      validateOpenSpecChange: async () => ({
+        ...validationResult(),
+        command,
+        commandSource
+      }),
+      getOpenSpecStatus: async () => ({
+        ...statusResult(),
+        command,
+        commandSource
+      })
+    });
+
+    assert.equal(result.openspec.command, command);
+    assert.equal(result.openspec.commandSource, commandSource);
+    assert.equal(result.openspec.validation.command, command);
+    assert.equal(result.openspec.validation.commandSource, commandSource);
+    assert.equal(result.openspec.status.command, command);
+    assert.equal(result.openspec.status.commandSource, commandSource);
+
+    const qaPath = path.join(rootDir, '.ai-factory', 'qa', 'add-oauth');
+    const validationEvidence = await readJson(path.join(qaPath, 'openspec-validation.json'));
+    const statusEvidence = await readJson(path.join(qaPath, 'openspec-status.json'));
+
+    assert.equal(validationEvidence.command, command);
+    assert.equal(validationEvidence.commandSource, commandSource);
+    assert.equal(statusEvidence.command, command);
+    assert.equal(statusEvidence.commandSource, commandSource);
+    assert.equal(path.posix.isAbsolute(validationEvidence.command), false);
+    assert.equal(path.win32.isAbsolute(validationEvidence.command), false);
+  });
+
+  it('skips OpenSpec status warning for numeric-leading change ids rejected by status CLI', async () => {
+    const rootDir = await createTempRoot();
+    const changeId = '81-command-wrappers';
+    await createOpenSpecChange(rootDir, changeId);
+    await createGeneratedRules(rootDir, changeId);
+    await writeFixture(rootDir, `.ai-factory/qa/${changeId}/rules.md`, renderGateResultBlock(createGateResult({
+      gate: 'rules',
+      status: 'pass',
+      blockers: [],
+      affectedFiles: [],
+      suggestedNext: null
+    })));
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId,
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult({
+        args: [
+          'validate',
+          changeId,
+          '--type',
+          'change',
+          '--strict',
+          '--json',
+          '--no-interactive',
+          '--no-color'
+        ]
+      }),
+      getOpenSpecStatus: async (id) => ({
+        ok: false,
+        command: 'openspec',
+        args: ['status', '--change', id, '--json', '--no-color'],
+        exitCode: 1,
+        stdout: '\n',
+        stderr: `× Error: Invalid change name '${id}': Change name must start with a letter\n`,
+        json: null,
+        jsonParseError: null,
+        error: {
+          code: 'non-zero-exit',
+          message: 'OpenSpec command failed with exit code 1.'
+        }
+      })
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.shouldRunCodeVerification, true);
+    assert.equal(result.openspec.status.skipped, true);
+    assert.equal(result.openspec.status.reason, 'openspec-status-unsupported-change-id');
+    assert.deepEqual(result.warnings.filter((item) => item.code === 'openspec-status-unavailable'), []);
+
+    const verifySummary = await readFile(path.join(rootDir, '.ai-factory', 'qa', changeId, 'verify.md'), 'utf8');
+    assert.match(verifySummary, /OpenSpec status: SKIPPED/);
+    const gate = getLatestGateResult(verifySummary, { gate: 'verify' });
+    assert.equal(gate.ok, true);
+    assert.deepEqual(gate.result.blockers.filter((item) => item.id === 'openspec-status-unavailable'), []);
+  });
+
+  it('uses injected active-change resolver and runtime layout hooks', async () => {
+    const rootDir = await createTempRoot();
+    const cwd = path.join(rootDir, 'workspace');
+    const stateDir = path.join('.ai-factory', 'custom-state');
+    const qaDir = path.join('.ai-factory', 'custom-qa');
+    const layoutStatePath = path.join(rootDir, '.ai-factory', 'custom-state', 'add-oauth');
+    const layoutQaPath = path.join(rootDir, '.ai-factory', 'custom-qa', 'add-oauth');
+    const calls = {
+      resolveActiveChange: [],
+      ensureRuntimeLayout: []
+    };
+
+    await createOpenSpecChange(rootDir);
+    await createGeneratedRules(rootDir);
+
+    const result = await buildVerificationContext({
+      rootDir,
+      cwd,
+      changeId: 'add-oauth',
+      stateDir,
+      qaDir,
+      getCurrentBranch: async () => 'feat/add-oauth',
+      resolveActiveChange: async (options) => {
+        calls.resolveActiveChange.push(options);
+
+        return {
+          ok: true,
+          changeId: options.changeId,
+          source: 'injected-resolver',
+          changePath: path.join(rootDir, 'openspec', 'changes', options.changeId),
+          statePath: path.join(rootDir, '.ai-factory', 'resolver-state', options.changeId),
+          qaPath: path.join(rootDir, '.ai-factory', 'resolver-qa', options.changeId),
+          candidates: [options.changeId],
+          warnings: [
+            {
+              code: 'resolver-hook-used',
+              message: 'Injected resolver was used.'
+            }
+          ],
+          errors: []
+        };
+      },
+      ensureRuntimeLayout: async (changeId, options) => {
+        calls.ensureRuntimeLayout.push({
+          changeId,
+          options
+        });
+
+        return {
+          ok: true,
+          changeId,
+          statePath: layoutStatePath,
+          qaPath: layoutQaPath,
+          created: [],
+          preserved: []
+        };
+      },
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult(),
+      getOpenSpecStatus: async () => statusResult()
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.resolver.source, 'injected-resolver');
+    assert.equal(result.paths.state, layoutStatePath, 'context should use the injected layout state path');
+    assert.equal(result.paths.qa, layoutQaPath, 'context should write QA evidence through the injected layout path');
+    assert.deepEqual(
+      calls.resolveActiveChange,
+      [
+        {
+          rootDir,
+          cwd,
+          changeId: 'add-oauth',
+          getCurrentBranch: calls.resolveActiveChange[0].getCurrentBranch
+        }
+      ],
+      'resolver hook should receive root, cwd, explicit change id, and branch hook'
+    );
+    assert.equal(typeof calls.resolveActiveChange[0].getCurrentBranch, 'function');
+    assert.equal(calls.ensureRuntimeLayout.length, 1, 'runtime layout hook should be called once');
+    assert.equal(calls.ensureRuntimeLayout[0].changeId, 'add-oauth');
+    assert.deepEqual(
+      calls.ensureRuntimeLayout[0].options,
+      {
+        rootDir,
+        cwd,
+        stateDir,
+        qaDir
+      },
+      'runtime layout hook should receive configured runtime paths'
+    );
+    assert.ok(
+      result.warnings.some((warning) => warning.code === 'resolver-hook-used'),
+      'context should preserve diagnostics returned by the injected resolver'
+    );
+    assert.equal(
+      await pathExists(path.join(layoutQaPath, 'openspec-validation.json')),
+      true,
+      'validation evidence should be written under the injected QA layout path'
+    );
+  });
+
+  it('fails fast on invalid validation and persists parsed non-zero stdout JSON', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+
+    const result = await runOpenSpecVerification('add-oauth', {
+      rootDir,
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult({
+        ok: false,
+        exitCode: 1,
+        stdout: '{"valid":false,"errors":["bad spec"]}',
+        stderr: 'validation failed',
+        json: null,
+        error: {
+          code: 'non-zero-exit',
+          message: 'OpenSpec command failed with exit code 1.'
+        }
+      }),
+      getOpenSpecStatus: async () => statusResult()
+    });
+
+    assert.equal(result.ok, false, 'invalid OpenSpec validation should fail context');
+    assert.equal(result.shouldRunCodeVerification, false, 'invalid validation should stop code verification');
+    assert.equal(result.errors[0].code, 'openspec-validation-failed');
+    assert.deepEqual(result.openspec.validation.parsedJson, {
+      valid: false,
+      errors: ['bad spec']
+    });
+    assert.equal(
+      await readFile(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'raw', 'openspec-validate.stderr'), 'utf8'),
+      'validation failed'
+    );
+
+    const validationEvidence = await readJson(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'openspec-validation.json'));
+    assert.deepEqual(validationEvidence.parsedJson, {
+      valid: false,
+      errors: ['bad spec']
+    });
+  });
+
+  it('treats OpenSpec 1.9 strict task-numbering warnings as blocking diagnostics', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    let statusCalls = 0;
+    const issues = [
+      {
+        level: 'WARNING',
+        path: 'tasks.md',
+        line: 8,
+        message: 'Task "10.7" is under group 11, but its leading number points to group 10. Move it to group 10 or renumber it.'
+      },
+      {
+        level: 'WARNING',
+        path: 'tasks.md',
+        line: 9,
+        message: 'Task "10.8" is under group 11, but its leading number points to group 10. Move it to group 10 or renumber it.'
+      },
+      {
+        level: 'WARNING',
+        path: 'tasks.md',
+        line: 11,
+        message: 'Task ID "11.1" is duplicated; it was first declared on line 10.'
+      }
+    ];
+    const payload = {
+      items: [{ id: 'add-oauth', type: 'change', valid: false, issues }],
+      summary: { totals: { items: 1, passed: 0, failed: 1 } },
+      version: '1.0'
+    };
+
+    const result = await runOpenSpecVerification('add-oauth', {
+      rootDir,
+      detectOpenSpec: async () => ({ ...availableCliDetection(), version: '1.9.0' }),
+      validateOpenSpecChange: async () => validationResult({
+        ok: false,
+        exitCode: 1,
+        stdout: JSON.stringify(payload),
+        json: null,
+        error: {
+          code: 'non-zero-exit',
+          message: 'OpenSpec command failed with exit code 1.'
+        }
+      }),
+      getOpenSpecStatus: async () => {
+        statusCalls += 1;
+        return statusResult();
+      }
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.shouldRunCodeVerification, false);
+    assert.equal(statusCalls, 0, 'strict validation failure must stop before status');
+    assert.ok(result.openspec.validation.args.includes('--strict'));
+    assert.deepEqual(
+      result.openspec.validation.parsedJson.items[0].issues.map(({ level, path, line, message }) => ({ level, path, line, message })),
+      issues
+    );
+    const verifySummary = await readFile(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'verify.md'), 'utf8');
+    const gate = getLatestGateResult(verifySummary, { gate: 'verify' });
+    assert.equal(gate.ok, true);
+    assert.equal(gate.result.status, 'fail');
+    assert.ok(gate.result.blockers.some((item) => item.id === 'openspec-validation-failed'));
+  });
+
+  it('keeps the same OpenSpec 1.9 task-numbering warnings non-blocking in a non-strict upstream observation', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await createGeneratedRules(rootDir);
+    const warning = {
+      level: 'WARNING',
+      path: 'tasks.md',
+      line: 8,
+      message: 'Task "10.7" is under group 11, but its leading number points to group 10. Move it to group 10 or renumber it.'
+    };
+    const payload = {
+      items: [{ id: 'add-oauth', type: 'change', valid: true, issues: [warning] }],
+      summary: { totals: { items: 1, passed: 1, failed: 0 } },
+      version: '1.0'
+    };
+
+    const result = await runOpenSpecVerification('add-oauth', {
+      rootDir,
+      detectOpenSpec: async () => ({ ...availableCliDetection(), version: '1.9.0' }),
+      validateOpenSpecChange: async () => ({
+        ...validationResult({ stdout: JSON.stringify(payload), json: payload }),
+        args: ['validate', 'add-oauth', '--type', 'change', '--json', '--no-interactive', '--no-color']
+      }),
+      getOpenSpecStatus: async () => statusResult()
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.shouldRunCodeVerification, true);
+    assert.equal(result.openspec.validation.args.includes('--strict'), false);
+    assert.deepEqual(result.openspec.validation.parsedJson.items[0].issues[0], warning);
+    assert.deepEqual(result.errors, []);
+  });
+
+  it('retains OpenSpec 1.12 strict INFO while allowing subsequent code verification', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await createGeneratedRules(rootDir);
+    const payload = {
+      items: [{ id: 'add-oauth', type: 'change', valid: true, issues: [{
+        level: 'INFO', path: 'widgets/spec.md', message: 'Archive would refuse this delta: missing target.'
+      }] }], summary: { totals: { items: 1, passed: 1, failed: 0 } }, version: '1.0'
+    };
+    const result = await runOpenSpecVerification('add-oauth', {
+      rootDir,
+      detectOpenSpec: async () => ({ ...availableCliDetection(), version: '1.12.0' }),
+      validateOpenSpecChange: async () => validationResult({ stdout: JSON.stringify(payload), json: payload }),
+      getOpenSpecStatus: async () => statusResult()
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.shouldRunCodeVerification, true);
+    assert.ok(result.openspec.validation.args.includes('--strict'));
+    assert.deepEqual(result.openspec.validation.parsedJson, payload);
+    assert.deepEqual(result.errors, []);
+  });
+
+  it('preserves OpenSpec 1.9 scenario-loss path/message and prevents a verify false PASS', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    const scenarioLoss = 'MODIFIED "Widget state" omits scenario(s) the current spec still has: "Edge case". Copy them into the MODIFIED block (a MODIFIED requirement replaces the whole block, so archive refuses to drop them).';
+    let statusCalls = 0;
+
+    const result = await runOpenSpecVerification('add-oauth', {
+      rootDir,
+      detectOpenSpec: async () => ({ ...availableCliDetection(), version: '1.9.0' }),
+      validateOpenSpecChange: async () => validationResult({
+        ok: false,
+        exitCode: 1,
+        stdout: JSON.stringify({
+          items: [{
+            id: 'add-oauth',
+            valid: false,
+            issues: [{ level: 'ERROR', path: 'widgets/spec.md', message: scenarioLoss }]
+          }]
+        }),
+        stderr: '',
+        json: null,
+        error: {
+          code: 'non-zero-exit',
+          message: 'OpenSpec command failed with exit code 1.'
+        }
+      }),
+      getOpenSpecStatus: async () => {
+        statusCalls += 1;
+        return statusResult();
+      }
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.shouldRunCodeVerification, false);
+    assert.equal(statusCalls, 0, 'scenario-loss must stop before status/archive eligibility');
+    assert.equal(result.openspec.validation.parsedJson.items[0].issues[0].message, scenarioLoss);
+    const evidence = await readJson(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'openspec-validation.json'));
+    assert.equal(evidence.parsedJson.items[0].issues[0].path, 'widgets/spec.md');
+    assert.equal(evidence.parsedJson.items[0].issues[0].message, scenarioLoss);
+    const verifySummary = await readFile(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'verify.md'), 'utf8');
+    const gate = getLatestGateResult(verifySummary, { gate: 'verify' });
+    assert.equal(gate.ok, true);
+    assert.equal(gate.result.status, 'fail');
+  });
+
+  it('uses degraded missing-CLI mode unless strict config requires CLI', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+
+    const degraded = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => missingCliDetection()
+    });
+
+    assert.equal(degraded.ok, true, 'missing CLI should degrade by default');
+    assert.equal(degraded.shouldRunCodeVerification, true, 'default missing CLI should allow code verification');
+    assert.ok(
+      degraded.warnings.some((warning) => warning.code === 'openspec-cli-unavailable'),
+      'default missing CLI should warn with openspec-cli-unavailable'
+    );
+
+    await writeFixture(rootDir, '.ai-factory/config.yaml', [
+      'aifhub:',
+      '  openspec:',
+      '    requireCliForVerify: "true" # enforce strict verify'
+    ].join('\n'));
+
+    const strict = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => missingCliDetection()
+    });
+
+    assert.equal(strict.ok, false, 'strict missing CLI should fail verification context');
+    assert.equal(strict.shouldRunCodeVerification, false, 'strict missing CLI should stop code verification');
+    assert.equal(strict.errors[0].code, 'openspec-cli-required');
+  });
+
+  it('applies strict generated-rules and rules-gate policy overrides', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await writeFixture(rootDir, '.ai-factory/config.yaml', [
+      'aifhub:',
+      '  openspec:',
+      '    requireGeneratedRulesForVerify: true',
+      '    requireRulesPassForVerify: true',
+      ''
+    ].join('\n'));
+
+    const missingEvidence = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult(),
+      getOpenSpecStatus: async () => statusResult()
+    });
+
+    assert.equal(missingEvidence.ok, false);
+    assert.ok(missingEvidence.errors.some((error) => error.code === 'missing-generated-rules'));
+    assert.ok(missingEvidence.errors.some((error) => error.code === 'rules-gate-evidence-missing'));
+
+    await writeFixture(rootDir, '.ai-factory/qa/add-oauth/rules.md', [
+      '# Rules Gate',
+      '',
+      renderGateResultBlock(createGateResult({
+        gate: 'rules',
+        status: 'pass',
+        blockers: [],
+        affectedFiles: [],
+        suggestedNext: null
+      })),
+      ''
+    ].join('\n'));
+    await writeFixture(rootDir, '.ai-factory/config.yaml', [
+      'aifhub:',
+      '  openspec:',
+      '    requireGeneratedRulesForVerify: false',
+      '    requireRulesPassForVerify: true',
+      ''
+    ].join('\n'));
+
+    const rulesPassed = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult(),
+      getOpenSpecStatus: async () => statusResult()
+    });
+
+    assert.equal(rulesPassed.ok, true);
+    assert.equal(rulesPassed.rulesGate.status, 'pass');
+    assert.ok(rulesPassed.warnings.some((warning) => warning.code === 'missing-generated-rules'));
+  });
+
+  it('skips validation when config disables validateOnVerify', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    let validateCalls = 0;
+    await writeFixture(rootDir, '.ai-factory/config.yaml', [
+      'aifhub:',
+      '  openspec:',
+      "    validateOnVerify: 'false' # caller disabled OpenSpec validation",
+      '    requireCliForVerify: false'
+    ].join('\n'));
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => {
+        validateCalls += 1;
+        return validationResult();
+      }
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.config.validateOnVerify, false);
+    assert.equal(result.shouldRunCodeVerification, true);
+    assert.equal(validateCalls, 0, 'validateOpenSpecChange should not run when validateOnVerify is false');
+    assert.equal(result.openspec.validation.skipped, true);
+    assert.ok(
+      result.warnings.some((warning) => warning.code === 'openspec-validation-disabled'),
+      'validateOnVerify false should record a warning/config note'
+    );
+
+    const validationEvidence = await readJson(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'openspec-validation.json'));
+    assert.equal(validationEvidence.ok, true);
+    assert.equal(validationEvidence.skipped, true);
+    assert.equal(validationEvidence.reason, 'validateOnVerify-disabled');
+    assert.equal(
+      validationEvidence.message,
+      'OpenSpec validation skipped because aifhub.openspec.validateOnVerify is false.'
+    );
+    assert.equal(validationEvidence.rawStdoutPath, null);
+    assert.equal(validationEvidence.rawStderrPath, null);
+
+    const verifySummary = await readFile(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'verify.md'), 'utf8');
+    assert.match(verifySummary, /OpenSpec validation: SKIPPED/);
+  });
+
+  it('blocks code verification on leaked ultra artifacts even when OpenSpec validation is disabled', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await createGeneratedRules(rootDir);
+    await writeFixture(rootDir, 'openspec/changes/add-oauth/index.md', '# Leaked ultra index\n');
+    await writeFixture(rootDir, '.ai-factory/config.yaml', [
+      'aifhub:',
+      '  openspec:',
+      '    validateOnVerify: false',
+      '    requireCliForVerify: false',
+      ''
+    ].join('\n'));
+    let validateCalls = 0;
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => {
+        validateCalls += 1;
+        return validationResult();
+      }
+    });
+
+    assert.equal(validateCalls, 0);
+    assert.equal(result.openspec.validation.reason, 'validateOnVerify-disabled');
+    assert.equal(result.artifactContract.status, 'fail');
+    assert.equal(result.ok, false);
+    assert.equal(result.shouldRunCodeVerification, false);
+    assert.ok(result.errors.some((error) =>
+      error.code === 'artifact-contract-fail'
+      && error.details?.rule_code === 'openspec-ultra-index-forbidden'
+    ));
+    const verifySummary = await readFile(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'verify.md'), 'utf8');
+    const gate = getLatestGateResult(verifySummary, { gate: 'verify' });
+    assert.equal(gate.ok, true);
+    assert.equal(gate.result.status, 'fail');
+    assert.ok(gate.result.blockers.some((blocker) => blocker.id === 'artifact-contract-fail'));
+  });
+
+  it('blocks code verification on leaked ultra artifacts when the OpenSpec CLI is unavailable', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await createGeneratedRules(rootDir);
+    await writeFixture(rootDir, 'openspec/changes/add-oauth/notes/phase-01-foundation.md', '# Leaked phase\n');
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => missingCliDetection()
+    });
+
+    assert.equal(result.openspec.validation.reason, 'openspec-cli-unavailable');
+    assert.equal(result.artifactContract.status, 'fail');
+    assert.equal(result.ok, false);
+    assert.equal(result.shouldRunCodeVerification, false);
+    assert.ok(result.errors.some((error) =>
+      error.code === 'artifact-contract-fail'
+      && error.details?.rule_code === 'openspec-ultra-phase-forbidden'
+    ));
+  });
+
+  it('skips status evidence when statusOnVerify is false', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    let statusCalls = 0;
+    await writeFixture(rootDir, '.ai-factory/config.yaml', [
+      'aifhub:',
+      '  openspec:',
+      '    validateOnVerify: true',
+      '    statusOnVerify: false'
+    ].join('\n'));
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult(),
+      getOpenSpecStatus: async () => {
+        statusCalls += 1;
+        return statusResult();
+      }
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.config.statusOnVerify, false);
+    assert.equal(statusCalls, 0);
+    assert.equal(result.openspec.status, null);
+    assert.equal(await pathExists(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'openspec-status.json')), false);
+
+    const verifySummary = await readFile(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'verify.md'), 'utf8');
+    assert.match(verifySummary, /OpenSpec status: SKIPPED/);
+  });
+
+  it('records invalid JSON output with raw stream paths and stops code verification', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+
+    const result = await buildVerificationContext({
+      rootDir,
+      changeId: 'add-oauth',
+      detectOpenSpec: async () => availableCliDetection(),
+      validateOpenSpecChange: async () => validationResult({
+        ok: false,
+        stdout: 'not json',
+        stderr: 'bad json',
+        json: null,
+        jsonParseError: {
+          code: 'invalid-json',
+          message: 'OpenSpec command returned invalid JSON.'
+        },
+        error: {
+          code: 'invalid-json',
+          message: 'OpenSpec command returned invalid JSON.'
+        }
+      })
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.shouldRunCodeVerification, false);
+    assert.equal(result.openspec.validation.jsonParseError.code, 'invalid-json');
+
+    const validationEvidence = await readJson(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'openspec-validation.json'));
+    assert.equal(validationEvidence.jsonParseError.code, 'invalid-json');
+    assert.equal(validationEvidence.rawStdoutPath, '.ai-factory/qa/add-oauth/raw/openspec-validate.stdout');
+    assert.equal(
+      await readFile(path.join(rootDir, '.ai-factory', 'qa', 'add-oauth', 'raw', 'openspec-validate.stdout'), 'utf8'),
+      'not json'
+    );
+  });
+
+  it('loads latest verification evidence without requiring optional status output', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await writeVerificationEvidence('add-oauth', {
+      validation: validationResult(),
+      status: null,
+      generatedRules: [],
+      shouldRunCodeVerification: true,
+      warnings: [],
+      errors: []
+    }, {
+      rootDir
+    });
+
+    const latest = await readLatestVerificationEvidence('add-oauth', { rootDir });
+
+    assert.equal(latest.ok, true);
+    assert.equal(latest.validation.changeId, 'add-oauth');
+    assert.equal(latest.status, null, 'missing optional status output should not throw');
+    assert.equal(latest.verify.exists, true);
+    assert.equal(latest.coverage.exists, true, 'latest verification evidence should include coverage artifact status');
+  });
+
+  it('does not treat branch-scoped qa-check.md as change-scoped verify or coverage evidence', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await writeFixture(rootDir, '.ai-factory/qa/feature-oauth-a1b2c3d4/qa-check.md', '# QA Check\n\n- [x] Browser smoke passed\n');
+
+    const latest = await readLatestVerificationEvidence('add-oauth', { rootDir });
+
+    assert.equal(latest.verify.exists, false, 'branch qa-check.md must not satisfy change-scoped verify.md evidence');
+    assert.equal(latest.coverage.exists, false, 'branch qa-check.md must not satisfy change-scoped coverage.json evidence');
+    assert.notEqual(latest.verify.path, '.ai-factory/qa/feature-oauth-a1b2c3d4/qa-check.md');
+    assert.notEqual(latest.coverage.relativePath, '.ai-factory/qa/feature-oauth-a1b2c3d4/qa-check.md');
+  });
+
+  it('fails the verify gate when strict coverage has missing requirements', async () => {
+    const rootDir = await createTempRoot();
+    await writeFixture(rootDir, '.ai-factory/config.yaml', [
+      'workflow:',
+      '  verify_mode: strict',
+      ''
+    ].join('\n'));
+    await writeFixture(rootDir, 'openspec/changes/add-oauth/proposal.md', '# Proposal\n');
+    await writeFixture(rootDir, 'openspec/changes/add-oauth/design.md', '# Design\n');
+    await writeFixture(rootDir, 'openspec/changes/add-oauth/tasks.md', '# Tasks\n');
+    await writeFixture(rootDir, 'openspec/changes/add-oauth/specs/auth/spec.md', [
+      '# Auth Delta',
+      '',
+      '## ADDED Requirements',
+      '',
+      '### Requirement: OAuth Login',
+      '',
+      'The system MUST support OAuth login.',
+      ''
+    ].join('\n'));
+
+    await writeVerificationEvidence('add-oauth', {
+      validation: validationResult(),
+      status: null,
+      generatedRules: [],
+      shouldRunCodeVerification: true,
+      warnings: [],
+      errors: []
+    }, {
+      rootDir
+    });
+
+    const latest = await readLatestVerificationEvidence('add-oauth', { rootDir });
+
+    assert.equal(latest.coverage.coverage.status, 'fail');
+    assert.match(latest.verify.content, /Coverage matrix: FAIL/);
+    assert.equal(latest.gateResult.ok, true);
+    assert.equal(latest.gateResult.result.status, 'fail');
+    assert.ok(latest.gateResult.result.blockers.some((blocker) => blocker.id === 'coverage-missing-requirements'));
+  });
+
+  it('writes and reloads the final verify gate result block', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+    await writeVerificationEvidence('add-oauth', {
+      validation: validationResult(),
+      status: null,
+      generatedRules: [],
+      shouldRunCodeVerification: false,
+      warnings: [],
+      errors: [
+        {
+          code: 'code-checks-failed',
+          message: 'Code verification failed.',
+          path: 'src/auth.ts'
+        }
+      ]
+    }, {
+      rootDir
+    });
+
+    const latest = await readLatestVerificationEvidence('add-oauth', { rootDir });
+    const verifyGate = getLatestGateResult(latest.verify.content, { gate: 'verify' });
+
+    assert.equal(verifyGate.ok, true);
+    assert.equal(verifyGate.result.gate, 'verify');
+    assert.equal(verifyGate.result.status, 'fail');
+    assert.equal(verifyGate.result.blocking, true);
+    assert.deepEqual(verifyGate.result.affected_files, ['src/auth.ts']);
+    assert.equal(latest.gateResult.ok, true);
+    assert.equal(latest.gateResult.result.status, 'fail');
+  });
+
+  it('rejects QA evidence writes outside QA runtime paths', async () => {
+    const rootDir = await createTempRoot();
+    await createOpenSpecChange(rootDir);
+
+    await assert.rejects(
+      () => buildVerificationContext({
+        rootDir,
+        changeId: 'add-oauth',
+        qaDir: 'openspec/changes',
+        detectOpenSpec: async () => availableCliDetection(),
+        validateOpenSpecChange: async () => validationResult()
+      }),
+      /QA evidence path|unsafe_runtime_directory/
+    );
+    assert.equal(await pathExists(path.join(rootDir, 'openspec', 'changes', 'add-oauth', 'openspec-validation.json')), false);
+    assert.equal(await pathExists(path.join(rootDir, 'openspec', 'changes', '.gitignore')), false);
+
+    await assert.rejects(
+      () => writeVerificationEvidence('add-oauth', {
+        validation: validationResult()
+      }, {
+        rootDir,
+        qaDir: '.ai-factory/plans'
+      }),
+      /QA evidence path/
+    );
+    assert.equal(await pathExists(path.join(rootDir, '.ai-factory', 'plans', 'add-oauth', 'openspec-validation.json')), false);
+  });
+
+  it('summarizes validation status and next steps', () => {
+    const failed = summarizeOpenSpecValidation({
+      ok: false,
+      changeId: 'add-oauth',
+      shouldRunCodeVerification: false,
+      openspec: {
+        validation: {
+          ok: false
+        },
+        status: null
+      },
+      warnings: [],
+      errors: [
+        {
+          code: 'openspec-validation-failed',
+          message: 'OpenSpec validation failed.'
+        }
+      ]
+    });
+
+    assert.match(failed, /OpenSpec validation: FAIL/);
+    assert.match(failed, /Code verification: BLOCKED/);
+    assert.match(failed, /Next step: \/aif-fix add-oauth/);
+  });
+});

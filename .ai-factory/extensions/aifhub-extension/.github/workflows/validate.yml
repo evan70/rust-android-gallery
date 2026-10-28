@@ -1,0 +1,38 @@
+name: Validate Extension
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Run validators (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: ['18.x', '20.19.x']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Skill workflow evaluations read a historical baseline commit.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Run validators
+        run: npm run validate
+
+      - name: Check release provenance
+        run: npm run provenance:check
+
+      - name: Run tests
+        run: npm test

@@ -1,0 +1,299 @@
+{
+  "$schema": "https://raw.githubusercontent.com/lee-to/ai-factory/2.x/schemas/extension.schema.json",
+  "name": "aifhub-extension",
+  "version": "1.8.1",
+  "description": "Upstream-first extension for AI Factory 2.11+: bootstrap remains extension-owned; `aif-plan`, `aif-implement`, `aif-verify`, and `aif-fix` connect through injections; upstream `aif-rules-check` is augmented by the AIFHub OpenSpec generated-rules injection; `aif-done` and `aif-mode` remain extension-owned finalizers/orchestrators; Codex and Claude runtime files publish through top-level `agentFiles`.",
+  "commands": [
+    {
+      "name": "aifhub-providers",
+      "description": "Inspect and run configured AIFHub validation and semantic model providers.",
+      "module": "./commands/aifhub-providers.mjs"
+    },
+    {
+      "name": "aifhub-session-brief",
+      "description": "Compile, inspect, or show a source-bound AIFHub SessionBrief.",
+      "module": "./commands/aifhub-session-brief.mjs"
+    },
+    {
+      "name": "aifhub-plan-compliance",
+      "description": "Compare plan, SessionBrief, and changed scope to produce a drift receipt.",
+      "module": "./commands/aifhub-plan-compliance.mjs"
+    },
+    {
+      "name": "aifhub-fresh-context-review",
+      "description": "Prepare a fresh-context AI review package and receipt.",
+      "module": "./commands/aifhub-fresh-context-review.mjs"
+    },
+    {
+      "name": "aifhub-tracer",
+      "description": "Run a tracer profile: run, promote, discard, replan, blocked, status.",
+      "module": "./commands/aifhub-tracer.mjs"
+    },
+    {
+      "name": "aifhub-plan-context",
+      "description": "Resolve a common plan context from a methodology adapter.",
+      "module": "./commands/aifhub-plan-context.mjs"
+    },
+    {
+      "name": "aifhub-exchange",
+      "description": "Export workflow profile metadata, per-change exchange bundles, or anonymized evaluation records.",
+      "module": "./commands/aifhub-exchange.mjs"
+    },
+    {
+      "name": "aifhub-mcp",
+      "description": "Run the AIFHub MCP server over stdio.",
+      "module": "./commands/aifhub-mcp.mjs"
+    },
+    {
+      "name": "aifhub-mode",
+      "description": "Run AIFHub artifact mode status, switch, sync, and doctor commands.",
+      "module": "./commands/aifhub-mode.mjs"
+    },
+    {
+      "name": "aifhub-migrate-legacy-plans",
+      "description": "Run AIFHub legacy AI Factory plan migration commands.",
+      "module": "./commands/aifhub-migrate-legacy-plans.mjs"
+    },
+    {
+      "name": "aifhub-write-gate-evidence",
+      "description": "Persist validated AIFHub gate evidence under QA paths.",
+      "module": "./commands/aifhub-write-gate-evidence.mjs"
+    },
+    {
+      "name": "aifhub-coverage",
+      "description": "Build and optionally write AIFHub OpenSpec coverage evidence.",
+      "module": "./commands/aifhub-coverage.mjs"
+    },
+    {
+      "name": "aifhub-done-readiness",
+      "description": "Run AIFHub OpenSpec done-readiness diagnostics.",
+      "module": "./commands/aifhub-done-readiness.mjs"
+    },
+    {
+      "name": "aifhub-done-finalizer",
+      "description": "Finalize a verified AIFHub OpenSpec change from an installed project.",
+      "module": "./commands/aifhub-done-finalizer.mjs"
+    },
+    {
+      "name": "aifhub-validate-artifacts",
+      "description": "Run AIFHub OpenSpec artifact contract validation.",
+      "module": "./commands/aifhub-validate-artifacts.mjs"
+    },
+    {
+      "name": "aifhub-handoff-gate-summary",
+      "description": "Run AIFHub Handoff gate summary diagnostics.",
+      "module": "./commands/aifhub-handoff-gate-summary.mjs"
+    },
+    {
+      "name": "aifhub-memory-tools",
+      "description": "Run AIFHub optional memory and context tool recommendation diagnostics.",
+      "module": "./commands/aifhub-memory-tools.mjs"
+    },
+    {
+      "name": "aifhub-analyze-config-diff",
+      "description": "Run the read-only AIFHub analyze config required-keys diff.",
+      "module": "./commands/aifhub-analyze-config-diff.mjs"
+    },
+    {
+      "name": "aifhub-review-policy",
+      "description": "Resolve, load, or scaffold the configured review policy through canonical path safety checks.",
+      "module": "./commands/aifhub-review-policy.mjs"
+    },
+    {
+      "name": "aifhub-context-dedup",
+      "description": "Run AIFHub session context dedup checks, status, and purge.",
+      "module": "./commands/aifhub-context-dedup.mjs"
+    },
+    {
+      "name": "aifhub-execution",
+      "description": "Manage source-bound execution, sealed batches, isolated integration, fix attempts, and recovery.",
+      "module": "./commands/aifhub-execution.mjs"
+    },
+    {
+      "name": "aifhub-evolution",
+      "description": "Propose, apply, and roll back versioned skill-context changes.",
+      "module": "./commands/aifhub-evolution.mjs"
+    },
+    {
+      "name": "aifhub-gate-coverage",
+      "description": "Inspect required gate coverage without changing evidence or authorizing progression.",
+      "module": "./commands/aifhub-gate-coverage.mjs"
+    }
+  ],
+  "skills": [
+    "skills/aif-analyze",
+    "skills/aif-done",
+    "skills/aif-mode"
+  ],
+  "mcpServers": [
+    {
+      "key": "aifhub",
+      "template": {
+        "command": "ai-factory",
+        "args": [
+          "aifhub-mcp"
+        ]
+      },
+      "instruction": "AIFHub MCP: exposes skill search, install, test, and improvement proposal tools. AI Factory 2.16+ renders this canonical template into runtime-specific MCP settings: Universal / Other writes .mcp.json with mcpServers, OpenCode uses mcp with type: local, and GitHub Copilot uses servers with type: stdio."
+    }
+  ],
+  "agentFiles": [
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-plan-polisher.toml",
+      "target": "aifhub-plan-polisher.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-implement-worker.toml",
+      "target": "aifhub-implement-worker.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-review-sidecar.toml",
+      "target": "aifhub-review-sidecar.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-fresh-context-reviewer.toml",
+      "target": "aifhub-fresh-context-reviewer.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-security-sidecar.toml",
+      "target": "aifhub-security-sidecar.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-verifier.toml",
+      "target": "aifhub-verifier.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-fixer.toml",
+      "target": "aifhub-fixer.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-rules-sidecar.toml",
+      "target": "aifhub-rules-sidecar.toml"
+    },
+    {
+      "runtime": "codex",
+      "source": "./agent-files/codex/aifhub-done-finalizer.toml",
+      "target": "aifhub-done-finalizer.toml"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-plan-polisher.md",
+      "target": "aifhub-plan-polisher.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-implement-worker.md",
+      "target": "aifhub-implement-worker.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-verifier.md",
+      "target": "aifhub-verifier.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-fixer.md",
+      "target": "aifhub-fixer.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-review-sidecar.md",
+      "target": "aifhub-review-sidecar.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-fresh-context-reviewer.md",
+      "target": "aifhub-fresh-context-reviewer.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-security-sidecar.md",
+      "target": "aifhub-security-sidecar.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-rules-sidecar.md",
+      "target": "aifhub-rules-sidecar.md"
+    },
+    {
+      "runtime": "claude",
+      "source": "./agent-files/claude/aifhub-done-finalizer.md",
+      "target": "aifhub-done-finalizer.md"
+    }
+  ],
+  "injections": [
+    {
+      "target": "aif-plan",
+      "position": "prepend",
+      "file": "./injections/core/aif-plan-plan-folder.md"
+    },
+    {
+      "target": "aif-explore",
+      "position": "prepend",
+      "file": "./injections/core/aif-explore-plan-folder.md"
+    },
+    {
+      "target": "aif-review",
+      "position": "prepend",
+      "file": "./injections/core/aif-review-context-providers.md"
+    },
+    {
+      "target": "aif-roadmap",
+      "position": "prepend",
+      "file": "./injections/core/aif-roadmap-maturity-audit.md"
+    },
+    {
+      "target": "aif-architecture",
+      "position": "prepend",
+      "file": "./injections/core/aif-architecture-context-boundary.md"
+    },
+    {
+      "target": "aif-commit",
+      "position": "prepend",
+      "file": "./injections/core/aif-commit-roadmap-freshness.md"
+    },
+    {
+      "target": "aif-archive",
+      "position": "prepend",
+      "file": "./injections/core/aif-archive-openspec-boundary.md"
+    },
+    {
+      "target": "aif-fix",
+      "position": "prepend",
+      "file": "./injections/core/aif-fix-plan-folder.md"
+    },
+    {
+      "target": "aif-verify",
+      "position": "prepend",
+      "file": "./injections/core/aif-verify-plan-folder.md"
+    },
+    {
+      "target": "aif-improve",
+      "position": "prepend",
+      "file": "./injections/core/aif-improve-plan-folder.md"
+    },
+    {
+      "target": "aif-implement",
+      "position": "prepend",
+      "file": "./injections/core/aif-implement-plan-folder.md"
+    },
+    {
+      "target": "aif-evolve",
+      "position": "prepend",
+      "file": "./injections/core/aif-evolve-plan-evidence.md"
+    },
+    {
+      "target": "aif-rules-check",
+      "position": "prepend",
+      "file": "./injections/core/aif-rules-check-openspec-generated-rules.md"
+    }
+  ]
+}

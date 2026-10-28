@@ -1,0 +1,217 @@
+config_version: 1
+language:
+  # Language for AI-agent communication (prompts, questions, explanations)
+  # Options: en, ru, de, fr, es, zh, ja, ko, pt, it
+  # Default: en
+  ui: sk
+
+  # Language for generated artifacts (plans, specs, documentation)
+  # Options: en, ru, de, fr, es, zh, ja, ko, pt, it
+  # Default: en (same as ui if not specified)
+  artifacts: en
+
+  # How to handle technical terms in translations
+  # Options:
+  #   - keep: preserve original English terms (API, database, etc.)
+  #   - translate: translate where common translation exists
+  #   - mixed: translate prose terms but keep code/infrastructure ecosystem terms
+  # Default: keep
+  technical_terms: keep
+
+# =============================================================================
+# Path Configuration
+# =============================================================================
+# Custom paths for AI Factory artifacts.
+# All paths are relative to project root.
+aifhub:
+  tools:
+    openspec: true
+    hlv: false
+    lekalo: false
+  openspec:
+    root: openspec
+    installSkills: false
+    validateOnPlan: true
+    validateOnImprove: true
+    validateOnVerify: true
+    statusOnVerify: true
+    archiveOnDone: true
+    useInstructionsApply: true
+    compileRulesOnSync: true
+    validateOnSync: true
+    requireCliForPlan: false
+    requireCliForImprove: false
+    requireCliForVerify: false
+    requireCliForDone: true
+    requireGeneratedRulesForVerify: false
+    requireGeneratedRulesForDone: true
+    requireRulesPassForVerify: false
+    requireRulesPassForDone: true
+    requireSpecCoverageForVerify: false
+    requireSpecCoverageForDone: true
+    allowWarnOnDone:
+      rules: false
+      # The coverage matrix only sees standalone test files; this repo keeps its unit tests in
+      # #[cfg(test)] modules inside the source files, so coverage stays "partial" even when every
+      # requirement is tested (see .ai-factory/qa/trash-vault-domain-extraction/verify.md).
+      coverage: true
+      openspecStatus: true
+paths:
+  description: .ai-factory/DESCRIPTION.md
+  architecture: .ai-factory/ARCHITECTURE.md
+  context: CONTEXT.md
+  roadmap: .ai-factory/ROADMAP.md
+  research: .ai-factory/RESEARCH.md
+  plans: openspec/changes
+  specs: openspec/specs
+  rules: .ai-factory/rules
+  state: .ai-factory/state
+  qa: .ai-factory/qa
+  generated_rules: .ai-factory/rules/generated
+  archive: .ai-factory/archive/
+  docs: docs/
+  evolution: .ai-factory/evolution/
+  evolutions: .ai-factory/evolutions/
+  fix_plan: .ai-factory/FIX_PLAN.md
+  patches: .ai-factory/patches/
+  plan: .ai-factory/PLAN.md
+  references: .ai-factory/references/
+  rules_file: .ai-factory/RULES.md
+  security: .ai-factory/SECURITY.md
+reviews:
+  policy_file: REVIEW.md
+utilities:
+  context_tools:
+    enabled: []
+  graphify:
+    enabled: false
+    uv_check: uv --version
+    install: uv tool install graphifyy
+    activate: graphify install
+    report_command: graphify .
+  codegraph:
+    enabled: false
+    command: codegraph
+    status: codegraph status
+    init: codegraph init .
+    index: codegraph index --quiet .
+    query: codegraph query --path . --limit 10 --json
+    purge: codegraph uninit --force .
+analyze:
+  skill_version: 0.16.0
+warmup:
+  paths: []
+  # Example:
+  # paths:
+  #   - docs/domain/
+  #   - infrastructure/decisions.md
+
+# =============================================================================
+# Workflow Settings
+# =============================================================================
+# Controls AI Factory workflow behavior.
+workflow:
+  # Automatically create .ai-factory/ directories when missing
+  # Default: true
+  auto_create_dirs: true
+
+  # Plan ID format for new plans
+  # Options: slug, sequential   (timestamp and uuid are reserved — see below)
+  # Default: slug (derived from branch or task description)
+  #
+  # Only `slug` and `sequential` are active right now. `timestamp` and `uuid`
+  # are accepted by `/aif-plan` but currently behave like `slug` (an INFO log
+  # is emitted). They are reserved for a future filename format that the
+  # branch-based consumers (`/aif-implement`, `/aif-improve`, `/aif-verify`,
+  # `/aif-rules-check`) will know how to discover.
+  #
+  # `sequential` writes full plans as `<NNNN>_<stem>.md` and ultra bundles as
+  # `<NNNN>_<stem>/index.md` under `paths.plans/`, where:
+  #   - `stem` is the canonical filename stem chosen by `/aif-plan`:
+  #       1. `HANDOFF_BRANCH_NAME` with `/` replaced by `-`  (Handoff mode)
+  #       2. the generated git branch name with `/` replaced by `-`
+  #       3. the description slug (when no branch is created)
+  #     Branch-based consumers reproduce the same stem at lookup time.
+  #   - NNNN = max(existing 4-digit prefix) + 1, zero-padded to 4 digits;
+  #     an empty plans directory starts from `0001`.
+  # Numbering is derived from existing numbered plan files and numbered
+  # directories whose index.md contains the exact ultra discovery marker.
+  # Other numbered directories do not consume IDs. If the highest-numbered
+  # plan artifact is deleted or moved elsewhere,
+  # that number can be reused on the next run; keep plans in place if you
+  # rely on stable cross-references. The format is bounded: 0001..9999.
+  # `/aif-plan` errors out instead of writing `10000_…` so consumer globs
+  # stay aligned. Branch names stay un-numbered (the prefix lives on the full
+  # filename or ultra directory). Force-disabled when Handoff owns the branch
+  # (HANDOFF_BRANCH_PREPARED=1) — Handoff requires the plan identifier to equal
+  # the branch name. Fast plans (`paths.plan`) and fix plans
+  # (`paths.fix_plan`) are single files and ignore this setting.
+  plan_id_format: slug
+
+  # Whether the setup/analyze flow updates ARCHITECTURE.md
+  # Default: true
+  analyze_updates_architecture: true
+
+  # Whether /aif-architecture updates ROADMAP.md
+  # Default: true
+  architecture_updates_roadmap: true
+
+  # Default verification mode
+  # Options: strict, normal, lenient
+  # Default: normal
+  verify_mode: normal
+
+# =============================================================================
+# Git Settings
+# =============================================================================
+git:
+  # Whether this project uses git-aware workflows
+  # If false:
+  #   - /aif-plan full and /aif-plan ultra do not create branches
+  #   - /aif-review and /aif-verify do not assume a base branch exists
+  #   - merge/push guidance is skipped
+  # Default: auto-detected from the repository (.git presence)
+  enabled: false
+
+  # Default branch for diff/review/merge targets
+  # Examples: main, master, develop, trunk, 2.x
+  # Default: auto-detected from git metadata, fallback main
+  base_branch: main
+
+  # Automatically create feature branches for plans
+  # Applies only when git.enabled = true
+  # If false, /aif-plan full and /aif-plan ultra still create plan artifacts
+  # but stay on the current branch (using slug-named artifacts in no-git mode)
+  # Default: true when git is enabled
+  create_branches: false
+
+  # Branch name prefix for new features
+  # Applies only when create_branches = true
+  # Default: feature/
+  branch_prefix: feature/
+
+  # Skip push prompt after /aif-commit creates a commit
+  # If true:
+  #   - /aif-commit ends after successful local commit
+  #   - no "Push to remote?" prompt is shown
+  # Default: false
+  skip_push_after_commit: false
+
+# =============================================================================
+# Rules Configuration
+# =============================================================================
+# Configure the rules hierarchy for this project.
+rules:
+  # Base rules file (project-specific conventions)
+  # This file is created by /aif during project setup
+  # Default: .ai-factory/rules/base.md
+  base: .ai-factory/rules/base.md
+
+  # Area-specific rules files
+  # These are created by /aif-rules when you add area-specific conventions
+  # Uncomment and add paths as needed:
+  # api: .ai-factory/rules/api.md
+  # frontend: .ai-factory/rules/frontend.md
+  # backend: .ai-factory/rules/backend.md
+  # database: .ai-factory/rules/database.md
+agent_profile: default

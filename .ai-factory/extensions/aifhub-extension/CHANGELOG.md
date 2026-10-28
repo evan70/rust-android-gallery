@@ -1,0 +1,274 @@
+# История изменений
+
+Все заметные изменения этого проекта фиксируются в этом файле.
+
+Формат основан на [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [В разработке]
+
+### Добавлено
+- Read-only `aifhub-gate-coverage` (#235): bounded диагностика final gate inventory, policy-required rules/coverage и явно required review/security, без writes/locks или workflow authority. Недоказанная independence остаётся UNKNOWN; offline K=5/5×serial counters не заявляют model-call savings.
+
+### Изменено
+- SessionBrief компилятор читает tool-config через канонический precedence (TOOLS.md): new-style конфиги с `aifhub.tools.openspec: true` без legacy `artifactProtocol` больше не дают `openspec_protocol_required`; fail-closed сохранён для конфигураций без openspec и для malformed tool mappings (#243).
+- Coordination prompt-assets (#235): helper/direct path для служебной механики без AI worker; четыре формы и причина в existing notes; bounded same-shape batches с явными блокерами; sidecars только для самостоятельного вопроса; observed cost feedback отдельно от estimates/UNKNOWN, с сохранением pinned inputs и независимых ролей.
+- Precise-request fast path для `/aif-explore` (#236): явный read-only запрос с пятью settled измерениями служит confirmed brief; derived brief предъявляется один раз без второго confirmation. Новая authority для implementation, credentials, environment inspection, outside-project reads, optional providers и publication не возникает.
+- Действительное exact confirmation переносится между steps в пределах своего scope; material scope/risk/tradeoff change пересчитывает только affected frontier и запрашивает новые необходимые решения.
+- При уже разрешённой research persistence секция `## Confirmed brief` сохраняется вне Active Summary в regular research file либо ultra `RESEARCH.md`, никогда `INDEX.md`, с normalized SHA256, source/profile binding, confirmation provenance и запретом sensitive content. Запись остаётся частью обычного research output перед upstream coherence gates.
+- Optional evolution отделён от finalization: `/aif-done` выводит compact evolution proposals как output без intake worker и evolution writes; learning не блокирует verified finalization. Explicit/policy-required evolution получает отдельный owner workflow либо exact handoff с existing approvals и proposal_digest binding. Required governance и readiness gates сохраняются.
+
+## [1.8.1] - 2026-10-26
+
+### Добавлено
+- Offline snapshot cost matrix (#237): `benchmark:snapshot`, deterministic W/S/B/I/H/F/N fixtures с точным leaf count, закрытые catalog/results schemas, pinned commit/module hashes, отдельные cold/warm и diagnostic profiles, Trace2/fs counters, raw latency samples и median/IQR. Safety/equivalence/privacy gates сохраняют PASS/FAIL/NOTRUN и `no_promote=true`; измеренное ускорение публикуется только после запуска сопоставимых arms.
+
+### Изменено
+- Snapshot перечисляет bounded scope names без раннего content read и читает каждый уникальный leaf один раз. Bytes и executable mode получаются из одного fd с before/after checks, bigint pathname/fd identity и повторной проверкой компонентов пути; projections и persistent snapshot digest-контракт сохраняются. Isolation transfer images читаются тем же fd-bound примитивом.
+- Root common dir берётся из первого combined inspect, isolation identity объединяет три rev-parse в один, normal start повторно использует admission source до final fresh resolution. Полный Git re-inspect, replay freshness, catalogue lineage и prepared recovery сохраняются.
+- Combined identity принимает все git-допустимые символы branch names (включая Unicode whitespace) и отвергает только git-запрещённые. Leaf, удалённый между open и проверками, классифицируется как blocked `file-changed`, а не сырая fs-ошибка.
+- Snapshot требует файловую систему с inode numbers (dev/ino identity binding): ФС без inode (FAT32/exFAT, часть SMB) дают fail-closed `unsupported-file-identity`.
+- Release provenance обновлён для helper bytes версии 1.8.1.
+
+## [1.8.0] - 2026-10-25
+
+### Добавлено
+- Recursive submodule snapshots для serial execution одного checkout (#229): root-relative leaf inventory, отдельные HEAD/branch/index, parent gitlink и repository administration identity; initialized gitfile и old-form modules поддерживаются рекурсивно. Исходное расхождение module HEAD и parent gitlink допускается с независимым pinning. Physical submodule worktrees как isolation workers остаются unsupported.
+- Read-only `aifhub-execution diagnostics` с input `{}`: declared version, фактические SHA256 пяти execution modules и diagnostics host, per-file mismatches, capability probe и Git availability. Release `provenance.json`, генератор и проверка в CI/release отличают exact release от local modifications и unknown baseline; baseline 1.7.1 встроена отдельно.
+- Preserve-handoff при update: modified/unknown helper files сохраняются до замены в `.ai-factory/state/extension-updates/<utc-ts>/preserve/`, `diff-manifest.json` фиксирует installed/incoming hashes, stderr возвращает review/migrate instructions. `AIFHUB_UPDATE_STRICT=1` устанавливает nonzero после update. Bootstrap-ограничение: guard защищает обновления ИЗ этого релиза; первый переход со старой версии требует ручного consumer audit.
+
+### Исправлено
+- Plan compliance: code spans внутри пояснения surface-буллета больше не расширяют разрешённую поверхность изменений; групповые code-span запреты применяются до широкой разрешённой поверхности.
+- Git entries mode 160000 больше не читаются как обычные files; missing/uninitialized modules, unresolved gitlink stages, unsafe administration и filesystem aliases блокируются. Metadata drift блокирует resume/checkpoint без изменения historical receipts и существующих isolation invariants.
+
+### Изменено
+- Документированы recursive snapshot semantics, provenance diagnostics и update migration; CI matrix расширена `windows-latest` с сохранением Node 18.x / 20.19.x.
+
+## [1.7.1] - 2026-09-18
+
+### Добавлено
+- Research совместимости Agent Plugins 1.0 (#200): pinned revisions `plugin.schema`/`mcp.schema`, conformance frontmatter через `skills-ref 0.1.0` (Python 3.12.11), инвентаризация зависимостей на exact commit через `git archive`, client-kernel probe. Первая попытка экспорта трёх skills завершена решением reference-only — замыкание справочных ссылок затягивает значительную часть репозитория, а нормализация frontmatter теряет ограничение invocation. Исправленный профиль (2026-09-18) проверяет two-skill subset (`aif-analyze`, `aif-done`) с обязательным preflight и native host MCP binding с согласованным root override; production exporter, installer и настройки host не изменены.
+- Оценка TencentCloud/TencentDB-Agent-Memory (#201): paired screening 24 пар (6 проектов × tool/baseline × FTS/embeddings), качество 1.00/PASS во всех 48 запусках. Устойчивая экономия только для research-follow-up на средних/больших en-репо и impl-continuity на самом большом репо; recommendation `conditional_external_runtime_only` с exact screening gate и availability probe. AIFHub не устанавливает и не запускает: OpenClaw/Hermes-only surface, npm `postinstall` патчит host runtime, purge остаётся user-owned.
+- Подготовленная scenario-матрица Prime Agent (#148): восемь оставшихся runtime-экспериментов зафиксированы как sanitized `NOT_RUN` каталог с validation harness, отказывающим фабриковать execution claims; deferred-решение остаётся pinned, манифесты расширения защищены от тихого adoption prime-agent.
+- SQZ × pi live matrix (#186): 108 прогонов (3 независимых прогона × 6 анонимизированных репо × 2 типа задач × `off`/`aifhub`/`sqz`) через боевой `context-dedup` контракт с per-run изоляцией и восстановлением рабочего дерева. Главный результат — экономия байтов ≠ экономия токенов: SQZ сжимает 25–72% model-visible байтов, но в 4 из 6 профилей увеличивает полный расход токенов провайдера.
+- Кросс-проектная RTK матрица (#138): пять agent-фаз (explore, plan gates, diagnostics, fix archaeology, ops safety) × шесть помеченных проектов через ai-tester + ACP + Pi: baseline 23/30 пар против RTK 18/30, токены 342,653 → 345,823 (+0.9%). Два дефекта грейдера найдены после round 1, исправлены с unit-тестами, затронутые сценарии повторно исполнены; decision `reject_defer` не изменился.
+
+### Изменено
+- Evidence-based user-owned RTK рекомендации: включать для overview/search на больших репозиториях (-24..-58% с сохранением качества), ops/status проверок и proxy-просмотров истории/diffs; держать выключенным для маленьких репо, exact aggregate counting задач, verification/fix runners и чувствительных сессий. Machine-readable metadata `aifhub.token_providers.recommendation.v1` зеркалирует memory-tools паттерн (decision, evidence pointers, proven benefits, anti-scopes) — durable research metadata, которую runtime не потребляет и ничто не гейтит.
+
+### Исправлено
+- Gate tencentdb-agent-memory: закрыты Devin review findings через hardening recommender с regression-тестами; provenance guard prime-agent матрицы усилен, screening labels санитизированы.
+
+## [1.7.0] - 2026-09-13
+
+### Добавлено
+- P2 cross-project exchange для issue #203: команда `ai-factory aifhub-exchange` экспортирует три versioned артефакта — `aifhub.workflow_profile_export.v1` (registry-facing каталог профилей, capabilities и lineage vocabulary для aifhub#29 с явным маппингом `expanded → full` из ADR 0004), `aifhub.exchange_bundle.v1` (revision-bound пакет change для orchestrator import по orkora#229: plan context, SessionBrief с digest, hashed artifact inventory, lineage edges и verbatim receipts) и `aifhub.evaluation_export.v1` (обезличенная evaluation-запись с обязательным evidence class, measured-only метриками и opt-in `aifhub.runner_metrics.v1` для tokens/cost/latency). Soft-ошибки адаптеров и stale/missing SessionBrief деградируют экспорт с явными `exchange_notes`; записи только через `--output` и безопасный writer под `.ai-factory/state/`.
+- Опциональный structured design-context `openspec/changes/<id>/design.context.json` (`aifhub.design_context.v1`): ограниченный список design surfaces с refs и content hashes, инвентаризируется и хэшируется как canonical document — входит в `source_revision` и staleness detection SessionBrief, но не заменяет `design.md`, delta specs или verification evidence и не создаёт второго canonical-дерева.
+
+### Изменено
+- Адаптация AI Factory `2.19.0` доведена до фактического релиза (issue #197): источник перепривязан к опубликованному tag `v2.19.0` commit `e144f95c89de0d0cb6c9b38dbe8c2907b00dc5ce` (npm `ai-factory@2.19.0` `gitHead` совпадает), `lastSync` обновлён, а запись о pre-release snapshot `3c1ddd4740d7b1c30d8ecb3dc80fa5e7b8d7ef5a` сохранена как историческая. Полный диапазон `2.18.1...2.19.0` — 15 commits и 32 changed files; consumer smoke принимает точный опубликованный target `2.19.0` через слот `--v219-*` рядом с сохранённым `--v218-*` (ровно один target на запуск, `2.17.0` остаётся источником update).
+- Requirements Reconciliation gates из 2.19 отражены в границах AIFHub: `## Requirements Reconciliation` — точный upstream compatibility token, который планирование условно пишет в `proposal.md`, а improve, plan-polisher и implement/verify/fix сохраняют verbatim и читают как committed consistency record. Stop-семантика зеркалится bounded-токенами `ERROR [requirement-conflict]` и `WARN`/`ERROR [requirement-ambiguity]`; upstream `HANDOFF_MODE`/`blocked_external` протокол субагентов остаётся upstream-owned. `/aif-qa-check` browser replay (`paths.qa/<branch-slug>/browser-replay/TC-NNN.js` + `history/`, digest bindings, one proof run) задокументирован как upstream-owned branch-scoped артефакты, не являющиеся change-scoped verify/done evidence.
+- Адаптация к OpenSpec 1.13.0 (#198): предупреждения apply отображаются в execution context, заголовки внутри fenced-примеров больше не создают требования coverage, а explore/plan/improve явно различают принятые specs и активные changes. Добавлен аудит точного npm-пакета с проверками archive и ограничением upstream `show` для повторённых delta-секций.
+
+## [1.6.0] - 2026-09-13
+
+### Добавлено
+- Ужесточения по итогам построчных ревью PR #196: оба план-адаптера разбирают задачи с CRLF/LF/CR (Windows-`tasks.md` больше не теряет чекбоксы), `parseSddInputs` сохраняет строгие JSON-диагностики (`duplicate_json_key`/`invalid_json`) вместо маскировки под `invalid-sdd-inputs`, fresh-context-review проверяет бюджет байтов в ветках `targetDiff`/`changedFiles` и возвращает чистый `target_too_large`, tracer-состояние парсится `parseStrictJson` с отдельным кодом `corrupt_tracer_state`, CLI резолвера различает `unknown-methodology` и `adapter_load_failed` и пишет `--output` через безопасный writer (temp, `wx` 0600, atomic rename) с runtime-gitignore, mid-compile guard SessionBrief перепроверяет все документы `plan_context`, plan-compliance собирает изменённый scope с `--untracked-files=all`.
+- Завершены P1-компоненты issue #168: `aifhub.plan_compliance.v1` — read-only drift-чек плана с детерминированными исходами compliant/acceptable_drift/replan_required/blocked; fresh-context AI review `aifhub.ai_cross_context_review.v1` — экспорт точного пакета отдельному ревьюеру без транскрипта и рассуждений producer'а; tracer-профиль `aifhub.tracer_brief/findings/decision.v1` с явным promote/discard/replan и запретом финализации без обновления канона; измеренный контекстный бюджет — `budget.brief_bytes` считается по отрендеренному SessionBrief, `token_estimate` остаётся `null` без метаданных модели, декларативный `context_policy` (только `strategy: measured`, protected-артефакты без семантического сжатия) валидируется в `.ai-factory/sdd-policy.json` и эхом попадает в profile decision. Все новые команды пишут только в `.ai-factory/state/<change-id>/`, канонические OpenSpec/QA-владельцы и гейты не меняются; кросс-runtime Claude/Codex/Hermes остаётся открытым пунктом P1.
+- Track B (ADR 0005): общий plan resolver `aifhub.plan_context.v1` с методологическими адаптерами OpenSpec и AI Factory native и командой `ai-factory aifhub-plan-context`; SessionBrief компилируется через резолвер и связывает digest с `plan_context.methodology`, `adapter_version` и `source_revision`, сохраняя за компилятором авторство инвентаря источников и ревизий. Общий строгий JSON-парсер `scripts/json-strict.mjs` отвергает дублирующиеся декодированные ключи.
+- Агрегированный read-only provider status в MCP: `aifhub.providers_status` принимает только фазы `status`/`doctor`, возвращает нормализованный provider evidence и никогда не запускает валидационные gates, инициализацию, sync или записи evidence. Mutating phases остаются на явном CLI `ai-factory aifhub-providers`.
+- Для issue #141 добавлены opt-in adapter, 39 сценариев по семи направлениям, 9 изолированных вариантов, frozen collector и наблюдаемая загрузка. Полное измерение из 234 попыток и отдельная коррекция измерителя сохранены с исходными данными: 94 pass / 140 fail, без операционных ошибок. Кандидаты не прошли критерии продвижения и остаются в fixtures; поставляемые инструкции сохраняют измеренный baseline. Историческая серия #164 сохранена; улучшение моделей не заявляется.
+- Оценка скиллов #164 автоматически сохраняет точную копию сборщика и требует доказательств для каждого известного параметра runtime; неизвестные значения остаются `null`. Уточнённый explore-сценарий сохраняет готовые ответы brief: два реальных запуска вернули зависимый вопрос о месте хранения, без вывода об улучшении моделей при неполных данных runtime и журналов.
+- Дополнительная квалификация #164: read-only `isolation-preflight` проверяет подготовленные worktrees до создания runs; общий контракт выбирает single/batch/isolated с учётом подготовки, контекста и интеграции. Добавлены отдельный host smoke fixture и пять парных behavioral-сценариев для explore/plan/implement/fix/review со скрытыми критериями, фиксацией инструкций и запретом выводов по неполным измерениям.
+- Дополнены адаптации mattpocock для #164: проверяемые сценарии и expand–migrate–contract в task design, минимизация сложного repro с повтором исходного случая, выбор наблюдаемого интерфейса тестов, подтверждённые архитектурные кандидаты, уточнение терминов/ADR и поддерживающие specialist reviews. Условные справочники подключены к текущим командам и парным Codex/Claude agents; статусы задач, attempt limits, два прохода и единственный review verdict сохраняются.
+- Первый этап адаптации mattpocock для #164: условно подключаемый `RESEARCH-DESIGN.md` добавляет ограниченное делегирование поиска фактов, передачу источников с ревизиями, сверку результатов и сравнение разных интерфейсов в explore/plan/improve. Codex/Claude plan-polisher используют общий контракт без вложенного делегирования; текущие confirmation, artifact ownership и legacy ultra границы сохраняются.
+- Изолированное исполнение для #164 встроено в основной `/aif-implement`: `isolation-*` actions связывают до пяти независимых single-task runs в подготовленных host worktrees, последовательно переносят точные результаты и требуют проверки объединённого дерева. Журнал образов поддерживает восстановление/откат переноса, остановку при неизвестных правках и abandonment с сохранением кода. Канонический прогресс разрешён только после closure и свежей сверки; создание worktrees, процессы, произвольный DAG scheduler, QA gates и публикация сохраняют прежних владельцев.
+
+## [1.5.2] - 2026-09-07
+
+### Изменено
+- Codex-агенты AIFHub наследуют модель и уровень reasoning основной сессии вместо закреплённых `gpt-5.4` / `gpt-5.4-mini`. Шаблоны оставляют выбор общим настройкам Codex или явным параметрам запуска; индивидуальную фиксацию можно добавить в файл роли.
+
+## [1.5.1] - 2026-09-06
+
+### Добавлено
+- Сохраняемое выполнение задач через `ai-factory aifhub-execution`: привязка к каноническим OpenSpec/classic-планам, индивидуальная приёмка результатов, небольшие batches, восстановление прерванных назначений и общий журнал попыток исправления. `ai-factory aifhub-evolution` добавляет проверяемые предложения изменений skill-context, применение и rollback с защитой последующих правок. Адаптация issue #148 не заменяет `/aif-verify`; host cancellation adapters, удаление orphan locks и поддержка Prime Agent runtime остаются отложенными.
+- Исследования T-Search и Prime Agent с воспроизводимыми probes и сохранёнными результатами: T-Search остаётся `reject_defer`, принятие Prime Agent как поддерживаемого runtime отложено. Исследования не добавляют установку или автоматический запуск этих инструментов.
+- После фактического обновления AIFHub через `ai-factory update` или `ai-factory extension update [aifhub-extension]` автоматически запускается обновлённый `aifhub-mode init --json`. Обработчик подключается через Commander API, не меняет установщик AI Factory и передаёт ошибку init в exit code. Для первого перехода с версии без обработчика нужен однократный ручной init; последующие обновления выполняют его сами.
+- Автоматические локальные `.gitignore` для runtime state, QA и generated rules в проекте-потребителе: bootstrap и самостоятельные writers создают `*` / `!.gitignore`, учитывают настроенные пути, сохраняют существующие правила и не меняют корневой `.gitignore` или индекс Git. Dry-run/status остаются без записи; небезопасные и канонические пути отклоняются.
+- Мультирепозиторный A/B RTK через ai-tester/Pi: четыре сценария на трёх связанных копиях с метками, 24 завершённых запуска, baseline 11/12 и RTK 12/12. Суммарная экономия 15,8% токенов зависит от сценария; полная диагностика восстанавливается raw-повтором. Добавлены скрытые проверки согласованного исправления, аудит неизменности исходников и обезличенные агрегаты; privacy blockers и `reject_defer` сохраняются. Удаление временных сырых данных отклонено автоматической проверкой разрешений.
+- Оценка RTK `v0.48.0` (issue #138) с решением `reject_defer`: pinned Linux binary, воспроизводимые raw/compressed/proxy probes, exact artifact/traceback checks и aggregate evidence выявляют потерю failure detail, хранение исключённых hook commands, неэффективный tracking disable и ограничения `tee`/partial TOML. Документированы raw bypasses, user-owned config/storage/metrics boundaries и условия будущего lifecycle A/B; binary, hooks и runtime integration не добавлены.
+- Ручной A/B RTK через ai-tester/Pi с `omniroute/la/ornith-1.5-35b-a3b`: четыре сценария на копиях трёх проектов, 24 завершённых наблюдения и четыре сохранённые неполные попытки; baseline 12/12 против RTK 9/12, нестабильная суммарная экономия 20,2% токенов. Добавлены сценарии, скрытые проверки, учёт всех model calls и агрегаты; автоматическая очистка временных сырых данных отклонена проверкой разрешений.
+- Идемпотентный `aifhub-mode init`: включённый OpenSpec получает недостающую структуру, HLV 1.0.0 инициализируется через adopt в существующем репозитории, а готовые корневые и adopt-проекты HLV сохраняют конфигурацию, контракты и milestones без повторного init. Bootstrap, переключение режима и sync используют этот шаг; status/doctor остаются read-only.
+- Composable HLV provider для OpenSpec и AI Factory-only проектов (issue #136): переключатель `enable: true/false`, обязательные проверки по умолчанию и отдельная `policy: optional` для предупреждений, безопасный CLI boundary для HLV 1.0.0, отдельное evidence с привязкой к revision, read-only doctor и provider readiness перед `/aif-done`. Добавлены schemas и fake semantic-provider contract для будущего Lekalo; реальный provider protocol Lekalo пока не опубликован.
+- Прототип SDD profiles и SessionBrief для OpenSpec, P0 issue #168: отдельные profile/mode IDs (ADR 0004), независимые required gates, versioned schemas, deterministic compiler/status/show через `ai-factory aifhub-session-brief`, exact source hashes и stale detection. Implementer получает компактный контекст с full-fidelity refs и фиксирует consumed digest. ADR 0005 уточняет целевую архитектуру: AI Factory всегда владеет планами, методологии и дополнительные инструменты подключаются через адаптеры; эта переработка runtime ещё не реализована. Compliance, fresh-context review execution, tracer и cross-project adapters остаются P1/P2.
+- Lifecycle-parity proxy для Ponytail `v4.9.0` (issue #137): изолированный runner `ponytail-lifecycle-ab.mjs` запускает `/aif-review`, `/aif-security-checklist`, `/aif-verify` и `/aif-fix` на seeded real-project дефектах (float-precision рендеринг цены в Laravel, проглоченная AES-GCM ошибка аутентификации в Go) с canonical OpenSpec-артефактами, проверенными `openspec validate`, и детерминированными hidden-грейдерами (gate-контракт `aif-gate-result`, write-scope containment, инъекция существующего Go-теста). Полный прогон `omniroute/la/ornith-1.5-35b-a3b` (32 кейса, 16/16 пар): review и security 8/8 в обеих руках, verify и fix 0/8 с одинаковыми contract-discipline отказами; корректность между baseline и Ponytail не изменилась, зафиксирован только token overhead. Policy остаётся `manual_experiment_only`.
+- Exact-source evaluation для DietrichGebert/ponytail `v4.9.0` с policy `manual_experiment_only`: skill-provider guide фиксирует session/subagent hook scope, отличие upstream deterministic safety scorers от AIFHub gates, OpenSpec precedence и user-owned setup boundary; implementation-only proxy получил reproducible 24-case matrix на exact-commit TypeScript, Go и Laravel projects, hidden graders и два полных `pi 0.84.4` прогона (`omniroute/lq/qwen3.8-27b` и `omniroute/la/ornith-1.5-35b-a3b`, 48 строк). Mixed stack-dependent evidence сохраняет policy без promotion; runner закрывает child stdin и сохраняет partial timeout output с regression coverage (issue #137).
+- `dcg` (`destructive_command_guard`) документирован как optional user-owned safety provider для pre-execution command guarding (issue #135): manual install остается вне AIFHub ownership, automation ограничена read-only probes, отсутствие provider является degraded behavior, а hooks, agent/runtime config, dependencies, gates и raw denial artifact persistence явно запрещены.
+- Bounded adaptation идей `obra/superpowers` для issue #141: RED -> GREEN -> REFACTOR evidence в implementation traces, systematic root-cause hypothesis/experiment evidence в fix traces, two-pass plan/spec-then-quality review и отдельный source/ownership документ без plugin/bootstrap installation.
+- Configurable durable review policy `reviews.policy_file` с root-default `REVIEW.md`: `/aif-analyze` создаёт missing safe scaffold, `/aif-mode` сохраняет путь без file lifecycle, а `/aif-review` и namespaced review sidecars читают policy только как additive guidance; per-session comments, resolution state, provider state и receipts остаются вне policy.
+
+### Изменено
+- Завершены остальные три Superpowers adaptation для issue #141: `/aif-implement` проверяет конфликты задач до edits/dispatch и поддерживает небольшие явные batches с поэлементным учётом; `/aif-fix` передаёт точные fix targets и finding IDs для scoped `/aif-review`, который проверяет каждое замечание и новые регрессии без автоматического PASS при неполных данных. Общие `TASK-COORDINATION.md` и `SCOPED-REVIEW.md` подключены к injections и Claude/Codex-парам; ownership #168 и `/aif-verify` сохранён.
+- `/aif-implement`, `/aif-fix` и четыре Claude/Codex implement/fix agents загружают общий `skills/shared/TEST-QUALITY.md`: обнаруживаемый дефект и независимое ожидаемое значение для полезных тестов, readiness condition с конечным deadline вместо увеличения sleep, сохранение timing assertions, ultra delegation и no-test fallbacks (issue #141). Точные ссылочные примеры исполняются против дефектных реализаций и управляемого времени; это не заявляется как доказательство соблюдения правил любой моделью.
+- Issue #171 расширен по запросу пользователя: reviewed OpenSpec baseline повышен сразу до `1.12.0` после последовательных exact-package audits 1.11/1.12; stable range и Node floor сохранены. Проверены diff/batch, Purpose, rename, schema rollback, Antigravity, findings report, INFO archive preflight, .gitkeep и SourceCraft. Plan/improve требуют содержательный Purpose новой capability, bounded direct remediation существующего Purpose и read-only проверки кода до подготовки артефактов. Новые upstream commands остаются upstream-owned; `/aif-analyze` обновлён один раз до `0.14.0` для всего набора изменений.
+- `/aif-implement` и managed implement workers теперь записывают focused-check RED/GREEN/REFACTOR или explicit no-test fallback только как supporting runtime evidence; `/aif-fix` и fixer agents требуют direct root-cause evidence, one falsifiable hypothesis и minimal experiment до edit; `/aif-review` и review sidecars проверяют plan/spec compliance перед code quality. `/aif-verify` остаётся authoritative.
+- Superpowers discipline contract теперь сверяет нормализованную семантику Claude/Codex-пар и порядок стабильных evidence-полей; runtime tests отдельно покрывают полный цикл, компактный fallback-only trace и type-scoping, а source metadata фиксирует upstream release `v6.3.0` и дату commit.
+- `/aif-explore` теперь уточняет research brief через dependency-aware design tree: самостоятельно собирает доступные repository/config facts в read-only режиме, задаёт пользовательские решения раундами по frontier зависимостей с рекомендациями и не считает пустой blocked/cyclic frontier завершением; полный research начинается только после урегулирования всех brief decisions и подтверждения нормализованного brief без создания отдельного interview artifact. Autonomous/subagent запуск сначала возвращает родителю unresolved decisions и blockers, а готовый brief — с blocker `research-brief-confirmation-required`, не принимая assumptions за согласие.
+
+### Исправлено
+- Review policy resolution теперь использует один installed canonical resolver для scaffold и read-only consumers: symlink/Windows junction escapes, managed-file collisions и canonical OpenSpec/project-rules/generated/runtime/QA roots fail closed до чтения или создания; реальные сценарии защищены executable regression-тестами.
+- `/aif-plan` теперь использует provider-neutral identity задач из GitHub, Linear, Jira, YouGile и других MCP-систем: читаемый внешний ID становится префиксом `<external-id>-<request-slug>`, а отдельный условный `AIFHub Source Binding` сохраняет provider, полный primary source, external ID и exact creation branch. Active-change resolver выбирает одну точную привязку до slug-эвристики, current pointer детерминированно разрешает несколько планов на одной ветке, а повреждённая привязка другой ветки изолируется warning-ом. Одинаковые ключи в разных provider/repository/tenant, primary + secondary linkage, opaque-ID fallback, malformed/mismatched binding и существующие коллизии обрабатываются без overwrite или потери ID-префикса. Legacy classic проверяет синхронизацию Markdown с `status.yaml`, а sequential сохраняет four-digit compatibility prefix.
+
+## [1.5.0] - 2026-09-01
+
+### Добавлено
+- Pinned source-compatibility evidence для AI Factory `2.19.0` на commit `3c1ddd4740d7b1c30d8ecb3dc80fa5e7b8d7ef5a`: exact `2.18.1...3c1ddd4740d7` audit включает 7 commits и 16 changed files, upstream-owned `/aif-warmup`, `warmup.paths` и Microsoft APM manifest. Отсутствие `2.19.0` tag, GitHub release и npm package зафиксировано отдельно от последнего published-executable smoke `2.18.1`.
+- Regression coverage для fresh `warmup.paths: []`, сохранения user-owned warmup list через оба mode profile и запрета backfill в существующий config без секции.
+- Exact-tagged OpenSpec `1.10.0` compatibility evidence с независимыми Git source custody (`v1.10.0`, commit `1ebddd17f40dde15dfd28289e4493c3cf05ee9df`, compare `v1.9.0...v1.10.0`) и checksum-verified npm executable custody (`@fission-ai/openspec@1.10.0`, integrity, shasum, bin, lifecycle scripts, dependencies и Node engine `>=20.19.0`). Локальный exact-package smoke не заявляется как CI, deployment или production evidence.
+- Bounded OpenSpec `1.10.0` CLI matrix для version detection, strict validate, status, show, apply/archive/specs instructions, open JSON envelopes, Store-root resolution, no-spec schema `skip_specs`, stderr-only telemetry notice и blocked-retirement archive no-mutation.
+- Exact-tagged OpenSpec `1.9.0` compatibility evidence с независимыми Git source custody (`v1.9.0`, commit `2826b8889e5223a9a8095d4428b60b56597e1020`, compare `v1.8.0...v1.9.0`) и npm executable custody (`@fission-ai/openspec@1.9.0`, integrity, shasum, bin и Node engine `>=20.19.0`). Локальный extracted-package smoke не заявляется как CI, deployment или production evidence.
+- Deterministic regressions для strict/non-strict task numbering, arbitrary nested scenario loss, rootless list/bulk/schemas behavior, invalid archive no-mutation и archive serialization с preserved blank lines и ровно одним final newline.
+- Negative repository contract, удерживающий `openspec validate --archived` вне package scripts, tracked CI, shared runner argv, `/aif-verify`, `/aif-done` и release acceptance PASS boolean.
+- Read-only детерминированный diff конфига `ai-factory aifhub-analyze-config-diff [--json]` (issue #143): AIFHub-owned ключи описаны манифестом `skills/aif-analyze/references/config-keys.json` (`{key, required, since, purpose}` и поле `deprecated`), отчёт классифицирует `missing` (с назначением) / `obsolete` / `version_drift` / `up_to_date`; команда fail-closed при отсутствующем конфиге или битом манифесте, манифест и версия скилла разрешаются extension-локально, а конфиг читается из корня consumer-проекта — сверка выполняется до патчинга без траты LLM-токенов. Конфиг запоминает версию скилла в блоке `analyze.skill_version` (существующее значение не перезаписывается), `aif-analyze` обновлён с 0.10.0 до 0.11.0 с diff перед патчем, презентацией добавлений с назначением и fast-path при `up_to_date`.
+- Завершённая evidence-backed оценка repo graph provider Understand Anything (issue #129): fail-closed eligibility, static-audit, sandbox и path/privacy contracts на pinned revision, deterministic reviewed-output adapter с sanitized fixtures и отдельная `ai-tester` matrix/reporting; full-trace privacy evaluation провален, unsafe raw traces очищены после bounded aggregation, а провайдер остаётся denylisted для probes, рекомендаций и normal execution — итоговое решение `reject_defer` без production-интеграции, installer, indexer, hook, viewer, daemon или automatic selection path.
+
+### Изменено
+- Reviewed AI Factory source baseline обновлён до snapshot, declaring `2.19.0`, при неизменном compatibility range `>=2.11.0 <3.0.0`; `/aif-warmup` и APM distribution остаются upstream-owned, а schema/loader, injection/MCP, Node, bin и dependency contracts не меняются.
+- Fresh AIFHub config теперь включает upstream default `warmup.paths: []`; существующая секция остаётся user-owned и сохраняется, а её отсутствие в existing config эквивалентно пустому списку и не вызывает backfill.
+- Reviewed OpenSpec baseline последовательно обновлён с `1.8.0` через `1.9.0` до `1.10.0` при неизменных baseline `1.3.1`, stable range `>=1.3.1 <2.0.0`, prerelease ledger `1.6.0-beta.1` и Node requirement `>=20.19.0`; `/aif-analyze` продолжает только source-aware non-blocking update guidance без automatic install/update/downgrade.
+- OpenSpec-native `/aif-plan` и `/aif-improve` теперь требуют inline completion verification в каждом task checkbox; отдельная verification task допустима только для broader integration/system checks, охватывающих несколько implementation tasks. Для legacy checklist `/aif-improve` выполняет bounded migration недостающих verification clauses, сохраняя номера, checkbox states, порядок и исходный intent задач.
+- Zed, `init --language`, Store selection, profiles, schema generation, OpenCode assets, completion/update behavior и package management остаются upstream-owned. На checkpoint 1.10.0 OpenSpec `1.11.0` оставался вне scope; последующий audit #171 описан выше.
+- Archived-wide validation документирована как отдельное advisory observation: historical incomplete archives не исправляются, а advisory exit не влияет на обязательный PASS.
+
+### Исправлено
+- Исправлен fallback языка prompt для issue #166: user-facing prose теперь детерминированно следует `language.ui` → current conversation → English-last без OS locale или persistence. Setup hint появляется только при hard English fallback с доступным prose slot, сохраняет exact-output-only branches и располагается до обязательного `aif-gate-result`; все 13 active injections и clean/global/targeted consumer smoke защищены matched start/end marker pairs и byte-identical upstream suffix checks.
+- Реконсиляция generated rules в `/aif-mode` переведена на authoritative active-change inventory с prepare-before-mutate batch (issue #163): status, doctor и sync получают bounded reconciliation operations в JSON, human output и отчётах; prune удаляет только точные compiler-owned archived outputs с сохранением unknown files, а canonical source snapshots и atomic publication защищены от linked roots, source drift и подмены generated root. Base index metadata и canonical paths валидируются до реконсиляции, чтение generated content и trace пропускается до установления active membership и root trust; добавлены regressions на traversal, Windows-absolute пути, malformed index и внешние junction/symlink.
+- Screening-матчеры Repowise больше не относят smoke evidence к generic proven labels; conditional и avoid cases выровнены с matcher-supported project dimensions.
+- Understand Anything privacy checks обнаруживают credential-like JSON поля в compact contexts и полных traces, а fixture filesystem failures нормализуются без exposure путей; pinned matrix и fail-closed pair semantics уточнены.
+- `context_dedup` purge на Windows повторяет transient коды `EBUSY`/`EMFILE`/`ENFILE`/`ENOTEMPTY`/`EPERM` (bounded retries), поэтому файлы, временно занятые параллельными handlers или индексаторами, больше не ломают `purge --all` и session purge.
+
+## [1.4.0] - 2026-08-19
+
+### Добавлено
+- Marker-first AI Factory 2.18 classic/ultra classifiers, version и ultra-research resolvers, revision-bound legacy-ultra verification receipts и OpenSpec-native `/aif-archive` boundary без второго canonical source of truth.
+- Offline deterministic consumer smoke в default `npm test` и отдельный non-globbed `npm run smoke:ai-factory-2-18` driver для явно переданных local `2.17.0`/`2.18.1` command-plus-argv toolchains при сохранённых `--v217-*`/`--v218-*` flags. Driver проверяет exact version/provenance до project mutation, использует bounded `execFile`/`shell: false` boundary с Windows ConSpec adapter, возвращает `NOT_RUN` для missing prerequisites и не скачивает packages; stable `2.18.0` остаётся отдельной feature boundary.
+
+### Изменено
+- Reviewed AI Factory baseline обновлён до `2.18.1` при неизменном compatibility range `>=2.11.0 <3.0.0`: cumulative `2.18.0` ledger сохранён, OpenSpec-native `ultra` остаётся canonical-depth profile, legacy marked ultra остаётся atomic upstream bundle, а regular/ultra research остаётся supporting runtime context.
+- Машинный контракт `aif-gate-result` ужесточён: `suggested_next` обязан быть `null` при `status: "pass"` (диагностика `invalid-suggested-next-on-pass`), а терминальная и прямая next-step маршрутизация (`/aif-done <change-id>` после пройденного verify, `/aif-verify <change-id>` после пройденного rules gate) остаётся prose-only и никогда не кодируется в машинном блоке.
+- Новый upstream-owned `/aif-explore` Research Coherence Gate получает только non-bypass pass-through после разрешённой persisted записи: optional fresh-context `Task` имеет mandatory direct fallback, а в ultra coherence выполняется до Bundle Integrity Gate.
+- `/aif-analyze` и mode sync структурно patch-ят только AIFHub-owned config keys, сохраняют unknown/core nested fields и выводят diagnostics только по key paths/counts без values, environment или credentials.
+- Namespaced Codex/Claude agents используют общий parity contract: для marked legacy ultra возвращают exact upstream command handoff; verifier receipt пишет только command boundary, done/rules evaluators остаются read-only.
+- Для exact `2.17.0`→`2.18.1` документирован `ai-factory update --force`; `upgrade` остаётся только v1-to-v2 migration command. Targeted extension refresh документирован отдельно как `ai-factory extension update aifhub-extension --force`.
+
+### Исправлено
+- Устранён цикл next-step рекомендаций между `/aif-rules-check` и `/aif-verify` (issue #155): маршрутизация стала однонаправленной с терминальными состояниями — verify PASS → `/aif-done`, verify FAIL → `/aif-fix`, rules-check PASS → `/aif-verify` (или `/aif-done`, если verify уже пройден по актуальному реквизиту), rules-check FAIL/missing/stale → `/aif-mode sync --change` + rerun; зеркала claude/codex, injections и docs синхронизированы, контракт закреплён phrase-тестами prompt-ассетов.
+- Квитанции, написанные до null-on-pass контракта, получают адресные коды диагностики вместо безликих invalid-evidence исходов: `verification-gate-legacy-suggested-next` (remediation — один повторный `/aif-verify`) и `rules-gate-legacy-suggested-next` (перезапуск `/aif-rules-check` и персист через `ai-factory aifhub-write-gate-evidence`) в done readiness и параллельных проверках done finalizer; severity, blocking и recovery-команды не изменены.
+- Valid marked ultra bundles больше не определяются как folder-only classic plans и не мигрируются автоматически; malformed marker/phase shapes и classic/ultra collisions блокируются до записей.
+- Canonical OpenSpec changes fail-closed при попадании active ultra marker, `index.md`, direct/nested `phase-*` или runtime companion artifacts независимо от optional CLI policy.
+- Clean/global/targeted update evidence теперь доказывает сохранность exact upstream `aif-explore` bytes с Research Coherence Gate и one-copy AIFHub marker; targeted flow дополнительно доказывает замену stale managed AIFHub agent до extension-source hash, byte-identical dummy extension ledger/files, сохранность unknown config/unmanaged agents, injection cardinality и artifact digests.
+
+## [1.3.1] - 2026-08-13
+
+### Добавлено
+- Установленная команда `ai-factory aifhub-done-finalizer --change <change-id> --json` для bounded OpenSpec finalization без project-root helper scripts; публичный parser поддерживает только `--change`, `--skip-specs`, `--record-dirty-state` и `--json`, а коды выхода `0`/`1`/`2` разделяют success/warn, policy blocker и invalid/unresolved/unexpected command failure.
+- Изолированный fail-closed `ai-tester` harness для issue `#134`: 18-row matrix для `baseline`, MCP-only и Codex plugin на `context-mode 1.0.169` с provenance, authorization, privacy, lifecycle, purge, cleanup и session-continuity gates, а также sanitized append-only evidence.
+- Стандартизированный `## Roadmap Linkage` в OpenSpec proposals и marker-bounded `OpenSpec Change Lifecycle` с независимыми локальными состояниями `planned`/`finalized` и GitHub milestone phase audit.
+- Bounded roadmap lifecycle integration: `/aif-done` переводит только связанную строку в `finalized` после успешного archive, `/aif-commit` блокирует доказанный local lifecycle drift, а `/aif-roadmap check` отдельно reconciles текущий GitHub state.
+- Reproducible `gpt-5.6-luna`/`low` AI Tester matrix для пяти roadmap lifecycle сценариев с sanitized aggregate evidence без raw transcripts, credentials или sandbox paths.
+
+### Изменено
+- OpenSpec CLI теперь детерминированно выбирается как explicit non-empty `options.command` -> project-local `node_modules/.bin/openspec(.cmd)` -> `PATH`; selected explicit/local candidate не получает silent fallback, а diagnostics публикуют только safe command/source без auto-install, `npx`, parent-project search или private absolute paths.
+- OpenSpec compatibility ledger последовательно проверяет stable releases `1.4.0`–`1.8.0` и prerelease `1.6.0-beta.1`; adapter поддерживает native `skip_specs`, lifecycle metadata, nested tasks/specs и version-gated `retire_capabilities` без установки OpenSpec skills или запуска self-update.
+- `/aif-analyze` теперь сравнивает supported selected OpenSpec CLI с последней reviewed stable версией `1.8.0`: устаревшая CLI сохраняет capabilities, но получает неблокирующую рекомендацию обновить user-owned project-local/PATH/explicit installation без automatic install/update или package-manager guessing.
+- Recommendation для `context-mode` уточнена по authorized live evaluation: MCP-only остаётся `manual_helper_only` только для >1 MiB truncating output с mandatory purge и без доказанной экономии tokens; tested Codex plugin nested-shell path получает `avoid`, session continuity — `NOT_RUN(resume_driver_parity_unavailable)`, а normal AIFHub commands по-прежнему не выполняют auto-install, MCP registration или hook trust.
+
+### Исправлено
+- OpenSpec-native finalization установленного проекта больше не зависит от отсутствующего root `scripts/openspec-done-finalizer.mjs`: manifest wrapper запускает extension-local module, сохраняет fail-closed readiness/archive policy и возвращает whitelist-based human/JSON output.
+- Windows `.cmd` shim execution сохраняет literal argv, включая `%...%`, `!...!`, quotes и metacharacters, с explicit delayed-expansion disable; verification/finalization evidence сохраняет bounded `commandSource` без private absolute executable paths.
+- Same-process context-dedup ledger transactions сериализованы, поэтому concurrent reads больше не теряют один update во время полного test run.
+
+## [1.3.0] - 2026-07-28
+
+### Добавлено
+- Optional session context optimization service: `scripts/context-dedup.mjs`, wrapper command `ai-factory aifhub-context-dedup` и MCP tools `read_file_deduplicated`, `context_dedup_status`, `context_dedup_purge`. `aifhub.contextDedup.mode` выбирает `off | aifhub | sqz`; legacy `enabled` остаётся read-compatible. `sqz` запускается только как явно установленный user-owned executable через bounded `compress --no-cache`, exact repeats обслуживает AIFHub session ledger, state-dependent provider output fail-open отклоняется, а protected validation artifacts всегда отдаются полностью.
+- Детерминированный offline replay-харнесс `scripts/context-dedup-benchmark.mjs` для сравнения трёх режимов: baseline без dedup, собственный сервис и bounded raw-stdin external adapter с отдельными compression/delta/reference метриками.
+- Research по external candidate: `docs/memory-tools-research/sqz.md`, трёхстороннее сравнение в `docs/memory-tools-research/sqz-benchmark-results.md` и `ai-tester` matrix на `gpt-5.6-luna` с reasoning `low` (12 rows: baseline `4/4`, AIFHub `4/4`, безопасный `sqz --no-cache` runtime `4/4`; исторический stateful SQZ regression сохранён отдельно как `3/4`).
+
+### Изменено
+- Reviewed AI Factory baseline обновлён до `2.17.0` при сохранении compatibility range `>=2.11.0 <3.0.0`; полный `2.15.0 -> 2.16.0 -> 2.17.0` audit включает planning, fix, QA, MCP, Control Flow и reviewed no-op adaptations.
+- OpenSpec-native planning сохраняет immutable `## Original Request`, а revision-bound `## Research Context` предупреждает `WARN [research-drift]` без silent scope rebase.
+- `/aif-fix` использует regression-first pre/post check как supporting runtime evidence, не заменяя authoritative `/aif-verify` evidence.
+- `/aif-qa-check` документирован как branch-scoped QA execution с source/worktree bindings, stale invalidation, authorization и redaction; `qa-check.md` не является verify/done/archive evidence.
+- AI Factory `2.16+` Universal / Other MCP rendering описан через `.mcp.json` и `mcpServers`; `aif-analyze` генерирует `Control Flow` base rule только по repository evidence.
+- Документация OpenSpec-native workflow теперь описывает полный tail: sync/rules/review/security gates, verify/fix loop, doctor, done, post-archive sync, commit и optional evolve.
+- Prompt assets для done/implement/verifier теперь явно передают финализацию в `/aif-mode sync`, `/aif-commit` и optional `/aif-evolve`, не представляя `/aif-done` заменой commit gate.
+- `extension.json` теперь указывает на upstream JSON Schema `https://raw.githubusercontent.com/lee-to/ai-factory/2.x/schemas/extension.schema.json` и больше не содержит private AIFHub поля.
+- AIFHub metadata `compat` и `sources` вынесены в `aifhub-extension.json` с локальной схемой `schemas/aifhub-extension.schema.json`.
+- `npm run validate` теперь проверяет split contract: upstream manifest, AIFHub metadata, bundled agent files и docs links.
+- `compat.ai-factory` now requires `>=2.11.0 <3.0.0`; AI Factory 2.11.0 provides native `aif-rules-check`, so AIFHub keeps only `injections/core/aif-rules-check-openspec-generated-rules.md` for OpenSpec generated-rules augmentation.
+- `scripts/validate-extension.mjs` validates `extension.json` against the local synced copy of the upstream AI Factory extension schema.
+
+### Исправлено
+- `/aif-mode sync` в OpenSpec-native mode теперь обновляет `.ai-factory/rules/generated/openspec-base.md` даже после archive, когда активных changes больше нет, и пропускает change-specific rules/validation без ошибки.
+- `/aif-mode sync --all` больше не падает только из-за активных migrated/docs-only changes без delta specs; такие changes помечаются `no-delta-specs`, а changes с delta specs продолжают проходить sync validation.
+- Session context dedup считает net savings после стоимости replay, не заменяет короткий content более длинным replay и публикует `observedBytes`/`servedBytes`. SQZ benchmark adapter больше не помечает unchanged `Fresh` output как compression; отчёт разделяет exact-repeat, first-read, delta, protected-policy и failed-session savings.
+
+## [0.10.0] - 2026-04-20
+
+### Изменено
+- Manifest extension перепроверен против upstream `ai-factory 2.11.0`, а `compat.ai-factory` поднят до `>=2.11.0 <3.0.0`
+- Обновлены метаданные `sources.ai-factory`, чтобы явно зафиксировать проверенный upstream `2.11.0`
+- `README.md`, `docs/README.md` и `docs/usage.md` сведены к одной сводке совместимости без смешения поддержки и baseline-семантики
+
+### Исправлено
+- Убраны bootstrap-формулировки, из которых следовало, что extension создаёт bridge files вроде `AGENTS.md` или `CLAUDE.md`
+- Операционные примеры путей к plan сохранены на canonical placeholders: `.ai-factory/plans/<plan-id>.md` и `.ai-factory/plans/<plan-id>/`
+- Smoke-check guidance приведён в соответствие с manifest contract и поддерживаемым runtime floor для `agentFiles`
+
+## [0.9.1] - 2026-04-19
+
+### Добавлено
+- Поле `compat.ai-factory` в `extension.json` для semver-диапазона совместимости
+- Поле `sources.ai-factory` в `extension.json` для отслеживания upstream-версии
+- Проверка совместимости в `/aif-analyze`, которая предупреждает, когда активная версия `ai-factory` выходит за поддерживаемый диапазон
+
+### Изменено
+- Версия manifest extension поднята до `0.9.1`
+- Записи Codex `agentFiles` нормализованы под актуальную схему `runtime` / `source` / `target`, которую ожидает `ai-factory`
+
+### Исправлено
+- Восстановлена install-совместимость для `ai-factory extension add` с опубликованным manifest extension
+
+## [0.7.2] - 2026-03-21
+
+### Добавлено
+- `skills/shared/QUESTION-TOOL.md` - справочная документация по форматам `question` и `questionnaire` для разных agents (`pi`, `Claude Code`, `Kilo CLI`, `OpenCode`)
+
+### Изменено
+- Выполнена миграция с псевдосинтаксиса `AskUserQuestion:` на документированные вызовы `question` / `questionnaire` во всех workflow skills
+- Во все затронутые skills добавлен `allowed-tools: question questionnaire`
+- Унифицирован формат reference-ссылок во всех skill files
+- Всё содержимое skills переведено на английский для единообразия
+
+### Исправлено
+- Некорректный JSON-синтаксис (comments в JSON arrays) в `aif-verify-plus`
+
+## [0.7.1] - 2026-03-19
+
+### Добавлено
+- Skill `aif-explore` для thinking-only research mode с владением `RESEARCH`
+- Orchestration skill `aif-apply` для workflow выполнения plan
+- Документация по context loading policy
+
+### Изменено
+- Архитектура обновлена так, чтобы отражать срезы exploration и orchestration
+- Manifest синхронизирован с актуальным набором skills
+
+## [0.7.0] - 2026-03-15
+
+### Добавлено
+- Первый релиз `aifhub-extension`
+- Базовые workflow skills: `aif-analyze`, `aif-new`, `aif-improve-plus`, `aif-implement-plus`, `aif-verify-plus`, `aif-fix`, `aif-done`
+- Plan-folder workflow с отслеживанием статуса
+- Поддержка skill-context override
